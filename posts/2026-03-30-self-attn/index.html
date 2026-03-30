@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>The Mechanics of Attention: Self, Multi-Head, Causal, and Cross | David&#39;s Whiteboard</title>
+<meta name="keywords" content="transformer, attention, deep-learning, long-read" />
+<meta name="description" content="The single equation that changed NLP shipped in 2017 inside Attention Is All You Need (Vaswani et al.). By the end of this post you will have built, from scratch in PyTorch, working implementations of Self-Attention, Multi-Head Attention, Causal Self-Attention, and Cross-Attention.">
+<meta name="author" content="David Hoang">
+<link rel="canonical" href="../../posts/2026-03-30-self-attn/" />
+<link crossorigin="anonymous" href="../../assets/css/stylesheet.min.51b2420ff5ea1215cdf584af7ba59d5fea94201c33f25109d6448c7271631316.css" integrity="sha256-UbJCD/XqEhXN9YSve6WdX&#43;qUIBwz8lEJ1kSMcnFjExY=" rel="preload stylesheet" as="style">
+<script defer crossorigin="anonymous" src="../../assets/js/highlight.min.2eadbb982468c11a433a3e291f01326f2ba43f065e256bf792dbd79640a92316.js" integrity="sha256-Lq27mCRowRpDOj4pHwEybyukPwZeJWv3ktvXlkCpIxY="
+    onload="hljs.initHighlightingOnLoad();"></script>
+<link rel="icon" href="../../favicon_coffee.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="../../favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="../../favicon-32x32.png">
+<link rel="apple-touch-icon" href="../../apple-touch-icon.png">
+<link rel="mask-icon" href="../../safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="../../posts/2026-03-30-self-attn/" />
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --hljs-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+      <script async src="https://www.googletagmanager.com/gtag/js?id=G-HFT45VFBX6"></script>
+      <script>
+        var doNotTrack = false;
+        if ( false ) {
+          var dnt = (navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack);
+          var doNotTrack = (dnt == "1" || dnt == "yes");
+        }
+        if (!doNotTrack) {
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-HFT45VFBX6');
+        }
+      </script><meta property="og:title" content="The Mechanics of Attention: Self, Multi-Head, Causal, and Cross" />
+<meta property="og:description" content="The single equation that changed NLP shipped in 2017 inside Attention Is All You Need (Vaswani et al.). By the end of this post you will have built, from scratch in PyTorch, working implementations of Self-Attention, Multi-Head Attention, Causal Self-Attention, and Cross-Attention." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="../../posts/2026-03-30-self-attn/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2026-03-30T00:00:00&#43;00:00" />
+<meta property="article:modified_time" content="2026-03-30T00:00:00&#43;00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="The Mechanics of Attention: Self, Multi-Head, Causal, and Cross"/>
+<meta name="twitter:description" content="The single equation that changed NLP shipped in 2017 inside Attention Is All You Need (Vaswani et al.). Build Self-Attention, Multi-Head Attention, Causal Self-Attention, and Cross-Attention from scratch in PyTorch."/>
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "Posts",
+      "item": "../../posts/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "Self-Attention and Multi-Head Attention",
+      "item": "../../posts/2026-03-30-self-attn/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Self-Attention and Multi-Head Attention",
+  "name": "Self-Attention and Multi-Head Attention",
+  "description": "The single equation that changed NLP shipped in 2017 inside Attention Is All You Need (Vaswani et al.). Scaled dot-product self-attention replaced recurrence, convolution, and alignment models with one operation. Every LLM since, from GPT to DeepSeek, runs on variants of it.",
+  "keywords": [
+    "transformer", "attention", "deep-learning", "long-read"
+  ],
+  "articleBody": "The single equation that changed NLP shipped in 2017 inside Attention Is All You Need (Vaswani et al.). Scaled dot-product self-attention replaced recurrence, convolution, and alignment models with one operation. Every LLM since, from GPT to DeepSeek, runs on variants of it. By the end of this post you will have built, from scratch in PyTorch, working implementations of Self-Attention, Multi-Head Attention, Causal Self-Attention, and Cross-Attention, the four building blocks that power every transformer. Self-Attention gives every token all-to-all connectivity through Q, K, V projections and scaled dot-product scoring. Multi-head attention runs h independent heads in parallel subspaces, then recombines via W_O. Causal self-attention adds a lower-triangular mask enabling autoregressive generation and KV caching. Cross-attention splits Q and K/V across two sequences, producing a rectangular attention matrix that bridges encoder and decoder.",
+  "wordCount" : "3800",
+  "inLanguage": "en",
+  "datePublished": "2026-03-30T00:00:00Z",
+  "dateModified": "2026-03-30T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "David Hoang"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "../../posts/2026-03-30-self-attn/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "David's Log",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "../../favicon_coffee.ico"
+    }
+  }
+}
+</script>
+<style>.logo{left:230px!important}</style>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<script>
+  MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$','$$'], ['\\[', '\\]']],
+      processEscapes: true,
+      processEnvironments: true
+    },
+    options: {
+      skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+    }
+  };
+
+  window.addEventListener('load', (event) => {
+      document.querySelectorAll("mjx-container").forEach(function(x){
+        x.parentElement.classList += 'has-jax'})
+    });
+
+</script>
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script type="text/javascript" id="MathJax-script" async
+  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="../../" accesskey="h" title="David&#39;s Whiteboard (Alt + H)">David&#39;s Whiteboard</a>
+            <span class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+                <ul class="lang-switch"><li>|</li>
+                </ul>
+            </span>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="../../" title="Posts">
+                    <span>Posts</span>
+                </a>
+            </li>
+            <li>
+                <a href="../../archives" title="Archive">
+                    <span>Archive</span>
+                </a>
+            </li>
+            <li>
+                <a href="../../search/" title="Search (Alt &#43; /)" accesskey=/>
+                    <span>Search</span>
+                </a>
+            </li>
+            <li>
+                <a href="../../tags/" title="Tags">
+                    <span>Tags</span>
+                </a>
+            </li>
+
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title">
+      The Mechanics of Attention: Self, Multi-Head, Causal, and Cross
+    </h1>
+    <div class="post-meta">Date: March 30, 2026  |  Estimated Reading Time: 36 min  |  Author: David Hoang
+
+</div>
+  </header> <div class="toc">
+    <details >
+        <summary accesskey="c" title="(Alt + C)">
+            <span class="details">Table of Contents</span>
+        </summary>
+
+        <div class="inner"><ul>
+                <li>
+                    <a href="#self-attention" aria-label="Self-Attention">Self-Attention</a><ul>
+                        
+                <li>
+                    <a href="#query-key-and-value" aria-label="Query, Key, and Value">Query, Key, and Value</a></li>
+                <li>
+                    <a href="#scaled-dot-product-attention" aria-label="Scaled Dot-Product Attention">Scaled Dot-Product Attention</a></li>
+                <li>
+                    <a href="#implementation-from-scratch" aria-label="Implementation from Scratch">Implementation from Scratch</a></li>
+                <li>
+                    <a href="#computational-cost" aria-label="Computational Cost">Computational Cost</a></li>
+                <li>
+                    <a href="#key-takeaways" aria-label="Key Takeaways">Key Takeaways</a></li></ul>
+                </li>
+                <li>
+                    <a href="#multi-head-attention-mha" aria-label="Multi-Head Attention (MHA)">Multi-Head Attention (MHA)</a><ul>
+                        
+                <li>
+                    <a href="#the-three-stage-pipeline" aria-label="The Three-Stage Pipeline">The Three-Stage Pipeline</a></li>
+                <li>
+                    <a href="#the-dimension-split" aria-label="The Dimension Split">The Dimension Split</a></li>
+                <li>
+                    <a href="#implementation-from-scratch-1" aria-label="Implementation from Scratch">Implementation from Scratch</a></li>
+                <li>
+                    <a href="#key-takeaways-1" aria-label="Key Takeaways">Key Takeaways</a></li></ul>
+                </li>
+                <li>
+                    <a href="#causal-self-attention" aria-label="Causal Self-Attention">Causal Self-Attention</a><ul>
+                        
+                <li>
+                    <a href="#the-mask-mechanism" aria-label="The Mask Mechanism">The Mask Mechanism</a></li>
+                <li>
+                    <a href="#kv-cache-and-inference-cost" aria-label="KV Cache and Inference Cost">KV Cache and Inference Cost</a></li>
+                <li>
+                    <a href="#implementation-from-scratch-2" aria-label="Implementation from Scratch">Implementation from Scratch</a></li>
+                <li>
+                    <a href="#key-takeaways-2" aria-label="Key Takeaways">Key Takeaways</a></li></ul>
+                </li>
+                <li>
+                    <a href="#cross-attention" aria-label="Cross-Attention">Cross-Attention</a><ul>
+                        
+                <li>
+                    <a href="#the-mechanism" aria-label="The Mechanism">The Mechanism</a></li>
+                <li>
+                    <a href="#role-in-the-original-transformer" aria-label="Role in the Original Transformer">Role in the Original Transformer</a></li>
+                <li>
+                    <a href="#cross-attention-vs-concatenation" aria-label="Cross-Attention vs. Concatenation">Cross-Attention vs. Concatenation</a></li>
+                <li>
+                    <a href="#implementation-from-scratch-3" aria-label="Implementation from Scratch">Implementation from Scratch</a></li>
+                <li>
+                    <a href="#key-takeaways-3" aria-label="Key Takeaways">Key Takeaways</a></li></ul>
+                </li>
+                <li>
+                    <a href="#conclusion" aria-label="Conclusion">Conclusion</a>
+                </li>
+            </ul>
+        </div>
+    </details>
+</div>
+
+  <div class="post-content"><p>The single equation that changed NLP shipped in 2017 inside <em>Attention Is All You Need</em> (<a href="https://arxiv.org/abs/1706.03762">Vaswani et al.</a>). Scaled dot-product self-attention replaced recurrence, convolution, and alignment models with one operation. Every LLM since, from GPT to DeepSeek, runs on variants of it.</p>
+<figure>
+    <img src="self-attn/Self-Attention%20and%20Multi-Head%20Attention/image.png" />
+    <figcaption>&ldquo;Attention is All You Need&rdquo; paper (<a href="https://arxiv.org/abs/1706.03762">https://arxiv.org/abs/1706.03762</a>)</figcaption>
+</figure>
+<p>By the end of this post you will have built, from scratch in PyTorch, working implementations of Self-Attention, Multi-Head Attention, Causal Self-Attention, and Cross-Attention, the four building blocks that power every transformer.</p>
+<p>No history lesson. No survey of 200 papers. Just the mechanics, the shapes, and the code. If you know what a tensor is and can read a <code>nn.Module</code>, you&rsquo;re ready.</p>
+<p>All code in this post is available as runnable Jupyter notebooks at <a href="https://github.com/david-hoangt/llm_from_scratch/tree/main/attention">github.com/david-hoangt/llm_from_scratch</a>.</p>
+<p><em>Note: We&rsquo;ll thread a single running example through the entire post: the sentence &ldquo;The CEO announced record earnings on Friday&rdquo;, embedded into <code>d_model = 64</code>. Watch how each mechanism transforms these vectors step by step.</em></p>
+<h1 id="self-attention">Self-Attention<a hidden class="anchor" aria-hidden="true" href="#self-attention">#</a></h1>
+<p>Right now, each of our 7 tokens [&ldquo;The&rdquo;, &ldquo;CEO&rdquo;, &ldquo;announced&rdquo;, &hellip; &ldquo;Friday&rdquo;] is an isolated 64-dimensional vector. &ldquo;announced&rdquo; has no idea that &ldquo;CEO&rdquo; is its subject or that &ldquo;Friday&rdquo; is when it happened. How does a model let every token decide which other tokens matter, without any hardwired positional rules?</p>
+<p>Self-attention computes a weighted sum of all other tokens&rsquo; representations, with weights determined by learned relevance, not fixed position. This is the atomic operation inside every transformer layer: BERT&rsquo;s encoder, ViT&rsquo;s patch interactions, the encoder side of T5. All bidirectional self-attention. Decoder-only models (GPT, LLaMA) use the causal variant we&rsquo;ll cover later.</p>
+<h2 id="query-key-and-value">Query, Key, and Value<a hidden class="anchor" aria-hidden="true" href="#query-key-and-value">#</a></h2>
+<p>Each token&rsquo;s embedding is a single vector, but it needs to play three roles at once. &ldquo;announced&rdquo; needs to <em>search</em> for its subject, while &ldquo;CEO&rdquo; needs to <em>advertise</em> that it is one, and both need to <em>transmit</em> their content when matched. A single vector can&rsquo;t encode &ldquo;what am I looking for&rdquo; and &ldquo;what do I offer&rdquo; simultaneously, so we project the input into three separate spaces:</p>
+<pre tabindex="0"><code>Q = X @ W_Q    K = X @ W_K    V = X @ W_V</code></pre>
+<ul>
+<li><strong>X</strong> <code>[batch, seq_len, d_model]</code>: Input embeddings</li>
+<li><strong>W_Q, W_K</strong> <code>[d_model, d_k]</code>: Project each token into query and key spaces</li>
+<li><strong>W_V</strong> <code>[d_model, d_v]</code>: Project each token into value space</li>
+<li><strong>Q</strong> <code>[batch, seq_len, d_k]</code>: What this token is <strong>looking for</strong></li>
+<li><strong>K</strong> <code>[batch, seq_len, d_k]</code>: What this token <strong>advertises</strong></li>
+<li><strong>V</strong> <code>[batch, seq_len, d_v]</code>: The <strong>content</strong> transmitted when attention is paid</li>
+</ul>
+<p>Two tokens interact strongly when their query-key dot product is high. &ldquo;announced&rdquo; is looking for a subject, and &ldquo;CEO&rdquo; advertises exactly that. The diagram below shows this three-way split from a single input embedding:</p>
+<figure>
+    <img src="self-attn/Self-Attention%20and%20Multi-Head%20Attention/image%201.png" />
+</figure>
+<p><em>In practice (and in all implementations below), we set <code>d_v = d_k</code>. The math generalizes to <code>d_v &ne; d_k</code>, but most architectures use equal dimensions for simplicity.</em></p>
+<h2 id="scaled-dot-product-attention">Scaled Dot-Product Attention<a hidden class="anchor" aria-hidden="true" href="#scaled-dot-product-attention">#</a></h2>
+<p>Those Q, K, V matrices are ready. &ldquo;announced&rdquo; now has a query vector, and &ldquo;CEO&rdquo; has a key vector. Their dot product measures how relevant they are to each other. But raw dot products between 64-dimensional vectors produce scores in the hundreds, pushing softmax into near-one-hot regions where gradients vanish. How do you turn them into stable, interpretable weights?</p>
+<pre tabindex="0"><code>Attention(Q, K, V) = softmax(Q @ K.T / sqrt(d_k)) @ V</code></pre>
+<ul>
+<li><strong>Q @ K.T</strong> &rarr; <code>[batch, seq_len, seq_len]</code> &mdash; Raw relevance scores between all token pairs</li>
+<li><strong>sqrt(d_k)</strong> (scalar) &mdash; Scaling factor. Dot product variance grows with <code>d_k</code>, saturating softmax</li>
+<li><strong>attn_weights</strong> &rarr; <code>[batch, seq_len, seq_len]</code> &mdash; Row-wise probability distribution</li>
+<li><strong>Output</strong> &rarr; <code>[batch, seq_len, d_v]</code> &mdash; Weighted average of all value vectors</li>
+</ul>
+<p>Without scaling, each element in <code>Q @ K.T</code> is a sum of <code>d_k</code> products; variance grows linearly with <code>d_k</code>, pushing softmax into near-one-hot regions where gradients vanish. Divide by <code>sqrt(d_k)</code> to keep the distribution smooth. Multiply by V to produce the final output: each token&rsquo;s new representation is a weighted mix of all values.</p>
+<p>In our 7-token example, the attention matrix is <code>[1, 7, 7]</code>. The row for &ldquo;announced&rdquo; peaks on &ldquo;CEO&rdquo; (subject) and &ldquo;earnings&rdquo; (object).</p>
+<figure>
+    <img src="self-attn/Self-Attention%20and%20Multi-Head%20Attention/image%202.png" />
+</figure>
+<p>That&rsquo;s the full mechanism. Translating it into code is straightforward.</p>
+<h2 id="implementation-from-scratch">Implementation from Scratch<a hidden class="anchor" aria-hidden="true" href="#implementation-from-scratch">#</a></h2>
+<pre tabindex="0"><code class="language-python">class SelfAttention(nn.Module):
+    def __init__(self, d_model: int, d_k: int | None = None):
+        super().__init__()
+        self.d_k = d_k if d_k is not None else d_model
+        self.W_q = nn.Linear(d_model, self.d_k, bias=False)
+        self.W_k = nn.Linear(d_model, self.d_k, bias=False)
+        self.W_v = nn.Linear(d_model, self.d_k, bias=False)
+
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        Q = self.W_q(x)  # (batch, seq_len, d_k)
+        K = self.W_k(x)  # (batch, seq_len, d_k)
+        V = self.W_v(x)  # (batch, seq_len, d_k)
+        scores = torch.bmm(Q, K.transpose(1, 2)) / math.sqrt(self.d_k)
+        weights = F.softmax(scores, dim=-1)  # (batch, seq_len, seq_len)
+        out = torch.bmm(weights, V)          # (batch, seq_len, d_k)
+        return out, weights</code></pre>
+<p>Simple, but expensive. Every token attends to every other token.</p>
+<p>&#128211; <a href="https://github.com/david-hoangt/llm_from_scratch/blob/main/attention/1.%20self_attention.ipynb">Run the full self-attention notebook</a> &mdash; includes bidirectional and causal modes with shape checks and attention heatmaps.</p>
+<h2 id="computational-cost">Computational Cost<a hidden class="anchor" aria-hidden="true" href="#computational-cost">#</a></h2>
+<p>Complexity: <code>O(n&sup2; &times; d)</code> time and memory. A 4,096-token sequence &rarr; ~16.8M entries per head per layer. At 128k tokens &rarr; ~16.4B. This quadratic scaling motivates every efficiency variant (such as sparse attention, Flash Attention, etc). The chart below shows how the attention matrix grows with sequence length:</p>
+<figure>
+    <img src="self-attn/Self-Attention%20and%20Multi-Head%20Attention/image%203.png" />
+</figure>
+<h2 id="key-takeaways">Key Takeaways<a hidden class="anchor" aria-hidden="true" href="#key-takeaways">#</a></h2>
+<p>Self-attention projects each token into Q, K, V spaces, computes scaled dot-product scores, and outputs a weighted combination of all value vectors, making every token&rsquo;s new representation a function of the entire sequence. It&rsquo;s the atomic unit of transformer attention, used in every encoder (BERT, ViT, T5 encoder) and as the core of every decoder. Powerful all-to-all connectivity at <code>O(n&sup2;)</code> time and memory cost.</p>
+<p>A single head can only capture one type of token relationship: &ldquo;announced&rdquo; attends to both &ldquo;CEO&rdquo; and &ldquo;Friday&rdquo; through the same weights. What if different positions need different relationship types?</p>
+<h1 id="multi-head-attention-mha">Multi-Head Attention (MHA)<a hidden class="anchor" aria-hidden="true" href="#multi-head-attention-mha">#</a></h1>
+<p>One head captures one relationship type. What if &ldquo;announced&rdquo; needs to attend to &ldquo;CEO&rdquo; for subject-verb agreement <em>and</em> to &ldquo;Friday&rdquo; for temporal grounding, simultaneously?</p>
+<p>MHA solves this by running <strong>h</strong> independent heads in parallel, each with its own Q/K/V projections learning different relationship types, then combining their outputs through a learned projection <strong>W_O</strong>.</p>
+<h2 id="the-three-stage-pipeline">The Three-Stage Pipeline<a hidden class="anchor" aria-hidden="true" href="#the-three-stage-pipeline">#</a></h2>
+<pre tabindex="0"><code>head_i = Attention(X @ W_i_Q,  X @ W_i_K,  X @ W_i_V)
+Output = Concat(head_1, ..., head_h) @ W_O</code></pre>
+<ul>
+<li><strong>Stage 1 &mdash; Parallel projections:</strong> Each head i projects into <code>d_k = d_model / h</code>. With <code>d_model = 64</code> and <code>h = 4</code>, each head works in 16 dimensions &rarr; <code>head_i</code>: <code>[batch, seq_len, d_k]</code></li>
+<li><strong>Stage 2 &mdash; Concatenation:</strong> Stack all head outputs along the feature dim &rarr; <code>[batch, seq_len, h * d_k]</code> = <code>[batch, seq_len, d_model]</code></li>
+<li><strong>Stage 3 &mdash; Output projection:</strong> <code>W_O</code> <code>[d_model, d_model]</code> mixes heads &rarr; <code>[batch, seq_len, d_model]</code></li>
+</ul>
+<p>Each head computes scaled dot-product attention in its own <code>d_k</code>-dimensional subspace. One learns subject-verb links (&ldquo;announced&rdquo; &rarr; &ldquo;CEO&rdquo;), another temporal relations (&ldquo;announced&rdquo; &rarr; &ldquo;Friday&rdquo;). <code>W_O</code> mixes these patterns into a unified representation. The diagram below traces data through all three stages:</p>
+<figure>
+    <img src="self-attn/Self-Attention%20and%20Multi-Head%20Attention/image%204.png" />
+</figure>
+<h2 id="the-dimension-split">The Dimension Split<a hidden class="anchor" aria-hidden="true" href="#the-dimension-split">#</a></h2>
+<p>A natural question: doesn&rsquo;t running <em>h</em> heads cost h times more? No. Each head works in <code>d_k = d_model / h</code>, not full <code>d_model</code>. With <code>d_model = 64</code> and <code>h = 4</code>: each head is 16-dimensional. Total parameters across all heads &asymp; one full-dimensional head. MHA is a better allocation of the same compute budget, not a more expensive one.</p>
+<p>The implementation reuses the <code>SelfAttention</code> class from earlier, one instance per head.</p>
+<h2 id="implementation-from-scratch-1">Implementation from Scratch<a hidden class="anchor" aria-hidden="true" href="#implementation-from-scratch-1">#</a></h2>
+<pre tabindex="0"><code class="language-python">class MultiHeadAttention(nn.Module):
+    def __init__(self, d_model: int, n_heads: int):
+        super().__init__()
+        self.d_k = d_model // n_heads
+        self.heads = nn.ModuleList([SelfAttention(d_model, self.d_k) for _ in range(n_heads)])
+        self.W_o = nn.Linear(d_model, d_model, bias=False)
+
+    def forward(self, x: torch.Tensor):
+        outs, weights = [], []
+        for head in self.heads:
+            h_out, h_w = head(x)
+            outs.append(h_out)
+            weights.append(h_w)
+        out = self.W_o(torch.cat(outs, dim=-1))   # (batch, seq_len, d_model)
+        return out, torch.stack(weights, dim=1)    # weights: (batch, n_heads, seq_len, seq_len)</code></pre>
+<p>&#128211; <a href="https://github.com/david-hoangt/llm_from_scratch/blob/main/attention/2.%20mutihead_attention.ipynb">Run the multi-head attention notebook</a> &mdash; includes per-head visualizations and a detailed single-head vs. multi-head comparison table.</p>
+<h2 id="key-takeaways-1">Key Takeaways<a hidden class="anchor" aria-hidden="true" href="#key-takeaways-1">#</a></h2>
+<p><strong>h</strong> parallel heads in <code>d_model / h</code> subspaces, combined via learned <code>W_O</code>, with the same total compute as single-head. MHA is the original design (GPT-2, OLMo); newer models use GQA (Llama 3) or MLA (DeepSeek V3) to reduce KV cache cost.</p>
+<p>MHA gives every head full access to all positions, but for autoregressive generation, &ldquo;Friday&rdquo; shouldn&rsquo;t peek at tokens that come after it. One additive mask solves this.</p>
+<h1 id="causal-self-attention">Causal Self-Attention<a hidden class="anchor" aria-hidden="true" href="#causal-self-attention">#</a></h1>
+<p>Standard attention lets every token see every other token, including the future. When the model is trying to predict what comes after &ldquo;The CEO announced&rdquo;, position 3 can look ahead and see &ldquo;record&rdquo; sitting at position 4. It just copies instead of learning to predict. That&rsquo;s where causal masks come in.</p>
+<pre tabindex="0"><code>CausalAttention(Q, K, V) = softmax(Q @ K.T / sqrt(d_k) + M) @ V</code></pre>
+<p>Add one hard constraint to standard attention: each token sees only itself and earlier positions. This is the attention mechanism inside every decoder-only LLM &mdash; GPT, Claude, LLaMA, Mistral &mdash; where the model generates one token at a time, left to right. Without this mask, the model copies instead of predicts.</p>
+<h2 id="the-mask-mechanism">The Mask Mechanism<a hidden class="anchor" aria-hidden="true" href="#the-mask-mechanism">#</a></h2>
+<p>We need position 3 (&ldquo;announced&rdquo;) to attend only to positions 0&ndash;3, while position 6 (&ldquo;Friday&rdquo;) can see everything. Add &minus;&infin; to the banned positions before softmax. They get exactly zero weight:</p>
+<pre tabindex="0"><code>M[i][j] = 0       if j &lt;= i
+M[i][j] = -inf    if j &gt; i</code></pre>
+<ul>
+<li><strong>Mask added</strong> before softmax, to scaled scores</li>
+<li><strong>Effect of e<sup>&minus;&infin;</sup>:</strong> exactly zero attention weight</li>
+<li><strong>Result:</strong> lower-triangular attention matrix</li>
+<li><strong>Reuse:</strong> computed once, shared across all heads and layers</li>
+<li><strong>Training:</strong> all T positions computed in one forward pass. Position t sees tokens 0&hellip;t simultaneously, no T separate passes needed</li>
+</ul>
+<p>Add M to <code>Q @ K.T / sqrt(d_k)</code> before softmax. Future positions get <code>-inf</code>, softmax maps them to exactly zero. The mask is built with <code>torch.triu(..., diagonal=1)</code> which produces the upper-triangular boolean, and <code>masked_fill</code> sets those positions to <code>-inf</code>.</p>
+<p>In our 7-token example, &ldquo;CEO&rdquo; (position 1, 0-indexed) sees only [&ldquo;The&rdquo;, &ldquo;CEO&rdquo;]. &ldquo;Friday&rdquo; (position 6) sees the full sequence. The attention matrix is lower-triangular: 28 active entries out of 49.</p>
+<p>Concretely: when generating &ldquo;The CEO announced ___&rdquo;, position 3 attends only to [&ldquo;The&rdquo;, &ldquo;CEO&rdquo;, &ldquo;announced&rdquo;]. It cannot see &ldquo;record&rdquo; at position 4 or &ldquo;Friday&rdquo; at position 6. If position 3 could peek at position 5, it would just copy &ldquo;earnings&rdquo; instead of learning to predict it.</p>
+<figure>
+    <img src="self-attn/Self-Attention%20and%20Multi-Head%20Attention/image%205.png" />
+</figure>
+<p>The mask handles training and shapes. But at inference time, the causal constraint unlocks a major optimization.</p>
+<h2 id="kv-cache-and-inference-cost">KV Cache and Inference Cost<a hidden class="anchor" aria-hidden="true" href="#kv-cache-and-inference-cost">#</a></h2>
+<p>The causal mask means token t never attends beyond t, so keys and values for positions <code>1...t-1</code> are fixed once computed. Caching them is safe. Bidirectional attention would invalidate the cache with every new token.</p>
+<p>During autoregressive generation, each new token attends to all previous tokens. The KV cache stores past key/value tensors to avoid recomputation:</p>
+<pre tabindex="0"><code>KV cache memory (bytes) = 2 * n_layers * n_heads * T * d_k * bytes_per_element</code></pre>
+<ul>
+<li><strong>2</strong> = one tensor for K, one tensor for V</li>
+<li><strong>LLaMA 3 8B</strong> (32 layers, 32 heads, d_k = 128, T = 8,192) &rarr; ~4 GB (float16)</li>
+<li><strong>Same config, T = 128k</strong> &rarr; ~69 GB (float16)</li>
+</ul>
+<p>This linear-in-T memory scaling is the dominant inference bottleneck. It&rsquo;s why long conversations slow down and why providers charge per-token. It drives GQA (share K/V across head groups) and MLA (compress K/V into a low-rank latent). The chart below shows KV cache memory scaling with sequence length:</p>
+<figure>
+    <img src="self-attn/Self-Attention%20and%20Multi-Head%20Attention/image%206.png" />
+</figure>
+<p><em>Gotcha: many heads assign disproportionate weight to the first token. Under the causal mask, it&rsquo;s the only position visible to all others, acting as a default &ldquo;sink&rdquo; for leftover attention mass (see StreamingLLM).</em></p>
+<h2 id="implementation-from-scratch-2">Implementation from Scratch<a hidden class="anchor" aria-hidden="true" href="#implementation-from-scratch-2">#</a></h2>
+<pre tabindex="0"><code class="language-python">class CausalSelfAttention(nn.Module):
+    def __init__(self, d_model: int, d_k: int):
+        super().__init__()
+        self.d_k = d_k
+        self.W_q = nn.Linear(d_model, d_k, bias=False)
+        self.W_k = nn.Linear(d_model, d_k, bias=False)
+        self.W_v = nn.Linear(d_model, d_k, bias=False)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        Q, K, V  = self.W_q(x), self.W_k(x), self.W_v(x)
+        seq_len  = x.size(1)
+        scores   = torch.bmm(Q, K.transpose(1, 2)) / math.sqrt(self.d_k)
+        mask     = torch.triu(torch.ones(seq_len, seq_len, dtype=torch.bool), diagonal=1)
+        weights  = F.softmax(scores.masked_fill(mask, float("-inf")), dim=-1)
+        return torch.bmm(weights, V)</code></pre>
+<p>&#128211; Causal attention is covered in the <a href="https://github.com/david-hoangt/llm_from_scratch/blob/main/attention/1.%20self_attention.ipynb">self-attention notebook</a> &mdash; the unified <code>SelfAttention</code> class handles both bidirectional and causal modes via an optional mask parameter.</p>
+<h2 id="key-takeaways-2">Key Takeaways<a hidden class="anchor" aria-hidden="true" href="#key-takeaways-2">#</a></h2>
+<p>Lower-triangular mask enables autoregressive generation, KV caching, and single-pass training, the foundation of every decoder-only model (GPT, LLaMA, Mistral). Bidirectional models (BERT) see everything but can&rsquo;t generate; encoder-decoder models (T5) combine both via cross-attention.</p>
+<p>Causal attention lets a sequence attend to itself with temporal constraints. But what about attending to a completely different sequence?</p>
+<h1 id="cross-attention">Cross-Attention<a hidden class="anchor" aria-hidden="true" href="#cross-attention">#</a></h1>
+<p>Causal self-attention connects tokens within one sequence. But what if the decoder needs to ask: &ldquo;which of the encoder&rsquo;s tokens matter for what I&rsquo;m generating right now?&rdquo;</p>
+<pre tabindex="0"><code>CrossAttention(Q, K, V) = softmax(Q @ K.T / sqrt(d_k)) @ V</code></pre>
+<p>Cross-attention connects two separate sequences: queries from one, keys/values from the other. Same formula as self-attention, but Q and K/V come from different sources.</p>
+<h2 id="the-mechanism">The Mechanism<a hidden class="anchor" aria-hidden="true" href="#the-mechanism">#</a></h2>
+<p>Consider translating &ldquo;The CEO announced record earnings on Friday&rdquo; (7 tokens) into Vietnamese: &ldquo;T&#7893;ng gi&aacute;m &#273;&#7889;c &#273;&atilde; c&ocirc;ng b&#7889; thu nh&#7853;p k&#7927; l&#7909;c v&agrave;o th&#7913; S&aacute;u&rdquo; (13 tokens). The decoder generates the Vietnamese output token by token, and at each step it needs to look back at the English source to decide what to translate next. The two sequences have different lengths: 13 Vietnamese tokens querying 7 English tokens.</p>
+<figure>
+    <img src="self-attn/Self-Attention%20and%20Multi-Head%20Attention/image%2010.png" />
+    <figcaption>Each line connects a decoder token (bottom) to an encoder token (top), with thickness proportional to attention weight. Notice the rectangular structure: every decoder token can attend to all encoder tokens &mdash; no causal mask needed since the encoder output is already complete.</figcaption>
+</figure>
+<p>The wiring: Q from one sequence, K/V from the other:</p>
+<pre tabindex="0"><code>Q = X_Q  @ W_Q       # from decoder: [batch, seq_len_q, d_model] -&gt; [batch, seq_len_q, d_k]
+K = X_KV @ W_K       # from encoder: [batch, seq_len_kv, d_model] -&gt; [batch, seq_len_kv, d_k]
+V = X_KV @ W_V       # from encoder: [batch, seq_len_kv, d_model] -&gt; [batch, seq_len_kv, d_k]</code></pre>
+<ul>
+<li><strong>X_Q</strong> <code>[batch, seq_len_q, d_model]</code> &mdash; Querying sequence (decoder)</li>
+<li><strong>X_KV</strong> <code>[batch, seq_len_kv, d_model]</code> &mdash; Context sequence (encoder)</li>
+<li><strong>Attention matrix</strong> <code>[batch, seq_len_q, seq_len_kv]</code> &mdash; <strong>Rectangular</strong>, not square</li>
+</ul>
+<p>In our example, the attention matrix is <code>13 x 7</code>: each of the 13 decoder rows specifies how one Vietnamese token distributes attention across all 7 English tokens.</p>
+<p>That covers the mechanism. But cross-attention doesn&rsquo;t exist in isolation; it&rsquo;s one of three sub-layers inside each decoder block.</p>
+<h2 id="role-in-the-original-transformer">Role in the Original Transformer<a hidden class="anchor" aria-hidden="true" href="#role-in-the-original-transformer">#</a></h2>
+<p>Each decoder block in the original Transformer stacks three sub-layers in sequence:</p>
+<ol>
+<li><strong>Causal self-attention</strong> &mdash; Q from decoder, K/V from decoder</li>
+<li><strong>Cross-attention</strong> &mdash; Q from decoder, K/V from encoder</li>
+<li><strong>Feed-forward network</strong> &mdash; position-wise, no attention</li>
+</ol>
+<p>The encoder output is computed once and reused by every decoder layer at every generation step. The diagram below shows the full decoder block with all three sub-layers, residual connections, and the encoder output feeding K/V into the cross-attention layer:</p>
+<figure>
+    <img src="self-attn/Self-Attention%20and%20Multi-Head%20Attention/image%208.png" />
+</figure>
+<p>This encoder-decoder design powered the original Transformer. But most modern text-only LLMs have moved away from it entirely.</p>
+<h2 id="cross-attention-vs-concatenation">Cross-Attention vs. Concatenation<a hidden class="anchor" aria-hidden="true" href="#cross-attention-vs-concatenation">#</a></h2>
+<p>Modern text-only LLMs (GPT, LLaMA) are decoder-only &mdash; no encoder, no cross-attention. They concatenate the two sequences and let causal self-attention handle the rest. The tradeoff:</p>
+<ul>
+<li><strong>Concatenation</strong> &mdash; Simpler, no extra architecture. But cost is <code>O((seq_q + seq_kv)&sup2;)</code>, the combined length quadratic.</li>
+<li><strong>Cross-attention</strong> &mdash; Cost is <code>O(seq_q &times; seq_kv)</code>, keeping the two sequences separate. But requires dedicated Q/K/V projections wired across encoder and decoder.</li>
+</ul>
+<p>For text-only LLMs, concatenation wins. Cross-attention remains dominant in multimodal architectures where the two modalities have very different representations: Flamingo (language &rarr; image features), Stable Diffusion (U-Net &larr; CLIP text), Whisper (decoder &larr; audio encoder).</p>
+<h2 id="implementation-from-scratch-3">Implementation from Scratch<a hidden class="anchor" aria-hidden="true" href="#implementation-from-scratch-3">#</a></h2>
+<p>The data flow diagram below maps directly to the code: X_Q feeds W_Q on the decoder side, X_KV feeds W_K and W_V on the encoder side, and both streams merge at the attention computation. Notice that <code>seq_len_q</code> and <code>seq_len_kv</code> are independent &mdash; 13 and 7 in our translation example &mdash; producing the rectangular matrix from earlier.</p>
+<figure>
+    <img src="self-attn/Self-Attention%20and%20Multi-Head%20Attention/image%207.png" />
+</figure>
+<pre tabindex="0"><code class="language-python">class CrossAttention(nn.Module):
+    def __init__(self, d_model: int, d_k: int | None = None):
+        super().__init__()
+        self.d_k = d_k if d_k is not None else d_model
+        self.W_q = nn.Linear(d_model, self.d_k, bias=False)
+        self.W_k = nn.Linear(d_model, self.d_k, bias=False)
+        self.W_v = nn.Linear(d_model, self.d_k, bias=False)
+
+    def forward(self, x_q: torch.Tensor, x_kv: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        Q = self.W_q(x_q)    # (batch, seq_len_q,  d_k)
+        K = self.W_k(x_kv)   # (batch, seq_len_kv, d_k)
+        V = self.W_v(x_kv)   # (batch, seq_len_kv, d_k)
+        scores = torch.bmm(Q, K.transpose(1, 2)) / math.sqrt(self.d_k)  # (batch, seq_len_q, seq_len_kv)
+        weights = F.softmax(scores, dim=-1)  # (batch, seq_len_q, seq_len_kv)
+        out = torch.bmm(weights, V)          # (batch, seq_len_q, d_k)
+        return out, weights</code></pre>
+<p>&#128211; <a href="https://github.com/david-hoangt/llm_from_scratch/blob/main/attention/3.%20cross_attention.ipynb">Run the cross-attention notebook</a> &mdash; includes padding mask handling and a translation alignment visualization.</p>
+<h2 id="key-takeaways-3">Key Takeaways<a hidden class="anchor" aria-hidden="true" href="#key-takeaways-3">#</a></h2>
+<p>Same formula as self-attention, but Q from one sequence and K/V from another &rarr; rectangular <code>seq_len_q x seq_len_kv</code> matrix. Bridges encoder-decoder in the original Transformer. Standard for multimodal; replaced by concatenation in text-only LLMs.</p>
+<h1 id="conclusion">Conclusion<a hidden class="anchor" aria-hidden="true" href="#conclusion">#</a></h1>
+<p>Four mechanisms, one core operation. <strong>Self-attention</strong> gives every token all-to-all connectivity through Q, K, V projections and scaled dot-product scoring. <strong>Multi-head attention</strong> runs h independent heads in parallel subspaces, then recombines via W_O, with the same compute budget but richer representations. <strong>Causal self-attention</strong> adds a lower-triangular mask that blocks future positions, enabling autoregressive generation and KV caching. <strong>Cross-attention</strong> splits Q and K/V across two sequences, producing a rectangular attention matrix that bridges encoder and decoder.</p>
+<p>Every transformer since 2017 (GPT, BERT, LLaMA, Whisper, Stable Diffusion) is built from combinations of these four building blocks.</p>
+<p>The shapes, the scaling, and the masks are the same; only the wiring changes.</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="../../tags/transformer/">Transformer</a></li>
+      <li><a href="../../tags/attention/">Attention</a></li>
+      <li><a href="../../tags/deep-learning/">Deep-Learning</a></li>
+      <li><a href="../../tags/long-read/">Long-Read</a></li>
+    </ul>
+<nav class="paginav">
+  <a class="next" href="../../posts/2025-05-01-thinking/">
+    <span class="title"> &raquo;</span>
+    <br>
+    <span>Why We Think</span>
+  </a>
+</nav>
+
+
+<div class="share-buttons">
+    <a target="_blank" rel="noopener noreferrer" aria-label="share Self-Attention and Multi-Head Attention on twitter"
+        href="https://twitter.com/intent/tweet/?text=Self-Attention%20and%20Multi-Head%20Attention&amp;url=https%3a%2f%2fdavid-hoangt.github.io%2fposts%2f2026-03-30-self-attn%2f&amp;hashtags=transformer%2cattention%2cdeep-learning%2clong-read">
+        <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve">
+            <path
+                d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-386.892,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Zm-253.927,424.544c135.939,0 210.268,-112.643 210.268,-210.268c0,-3.218 0,-6.437 -0.153,-9.502c14.406,-10.421 26.973,-23.448 36.935,-38.314c-13.18,5.824 -27.433,9.809 -42.452,11.648c15.326,-9.196 26.973,-23.602 32.49,-40.92c-14.252,8.429 -30.038,14.56 -46.896,17.931c-13.487,-14.406 -32.644,-23.295 -53.946,-23.295c-40.767,0 -73.87,33.104 -73.87,73.87c0,5.824 0.613,11.494 1.992,16.858c-61.456,-3.065 -115.862,-32.49 -152.337,-77.241c-6.284,10.881 -9.962,23.601 -9.962,37.088c0,25.594 13.027,48.276 32.95,61.456c-12.107,-0.307 -23.448,-3.678 -33.41,-9.196l0,0.92c0,35.862 25.441,65.594 59.311,72.49c-6.13,1.686 -12.72,2.606 -19.464,2.606c-4.751,0 -9.348,-0.46 -13.946,-1.38c9.349,29.426 36.628,50.728 68.965,51.341c-25.287,19.771 -57.164,31.571 -91.8,31.571c-5.977,0 -11.801,-0.306 -17.625,-1.073c32.337,21.15 71.264,33.41 112.95,33.41Z" />
+        </svg>
+    </a>
+    <a target="_blank" rel="noopener noreferrer" aria-label="share Self-Attention and Multi-Head Attention on linkedin"
+        href="https://www.linkedin.com/shareArticle?mini=true&amp;url=https%3a%2f%2fdavid-hoangt.github.io%2fposts%2f2026-03-30-self-attn%2f&amp;title=Self-Attention%20and%20Multi-Head%20Attention&amp;summary=Self-Attention%20and%20Multi-Head%20Attention&amp;source=https%3a%2f%2fdavid-hoangt.github.io%2fposts%2f2026-03-30-self-attn%2f">
+        <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve">
+            <path
+                d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-386.892,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Zm-288.985,423.278l0,-225.717l-75.04,0l0,225.717l75.04,0Zm270.539,0l0,-129.439c0,-69.333 -37.018,-101.586 -86.381,-101.586c-39.804,0 -57.634,21.891 -67.617,37.266l0,-31.958l-75.021,0c0.995,21.181 0,225.717 0,225.717l75.02,0l0,-126.056c0,-6.748 0.486,-13.492 2.474,-18.315c5.414,-13.475 17.767,-27.434 38.494,-27.434c27.135,0 38.007,20.707 38.007,51.037l0,120.768l75.024,0Zm-307.552,-334.556c-25.674,0 -42.448,16.879 -42.448,39.002c0,21.658 16.264,39.002 41.455,39.002l0.484,0c26.165,0 42.452,-17.344 42.452,-39.002c-0.485,-22.092 -16.241,-38.954 -41.943,-39.002Z" />
+        </svg>
+    </a>
+    <a target="_blank" rel="noopener noreferrer" aria-label="share Self-Attention and Multi-Head Attention on reddit"
+        href="https://reddit.com/submit?url=https%3a%2f%2fdavid-hoangt.github.io%2fposts%2f2026-03-30-self-attn%2f&title=Self-Attention%20and%20Multi-Head%20Attention">
+        <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve">
+            <path
+                d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-386.892,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Zm-3.446,265.638c0,-22.964 -18.616,-41.58 -41.58,-41.58c-11.211,0 -21.361,4.457 -28.841,11.666c-28.424,-20.508 -67.586,-33.757 -111.204,-35.278l18.941,-89.121l61.884,13.157c0.756,15.734 13.642,28.29 29.56,28.29c16.407,0 29.706,-13.299 29.706,-29.701c0,-16.403 -13.299,-29.702 -29.706,-29.702c-11.666,0 -21.657,6.792 -26.515,16.578l-69.105,-14.69c-1.922,-0.418 -3.939,-0.042 -5.585,1.036c-1.658,1.073 -2.811,2.761 -3.224,4.686l-21.152,99.438c-44.258,1.228 -84.046,14.494 -112.837,35.232c-7.468,-7.164 -17.589,-11.591 -28.757,-11.591c-22.965,0 -41.585,18.616 -41.585,41.58c0,16.896 10.095,31.41 24.568,37.918c-0.639,4.135 -0.99,8.328 -0.99,12.576c0,63.977 74.469,115.836 166.33,115.836c91.861,0 166.334,-51.859 166.334,-115.836c0,-4.218 -0.347,-8.387 -0.977,-12.493c14.564,-6.47 24.735,-21.034 24.735,-38.001Zm-119.474,108.193c-20.27,20.241 -59.115,21.816 -70.534,21.816c-11.428,0 -50.277,-1.575 -70.522,-21.82c-3.007,-3.008 -3.007,-7.882 0,-10.889c3.003,-2.999 7.882,-3.003 10.885,0c12.777,12.781 40.11,17.317 59.637,17.317c19.522,0 46.86,-4.536 59.657,-17.321c3.016,-2.999 7.886,-2.995 10.885,0.008c3.008,3.011 3.003,7.882 -0.008,10.889Zm-5.23,-48.781c-16.373,0 -29.701,-13.324 -29.701,-29.698c0,-16.381 13.328,-29.714 29.701,-29.714c16.378,0 29.706,13.333 29.706,29.714c0,16.374 -13.328,29.698 -29.706,29.698Zm-160.386,-29.702c0,-16.381 13.328,-29.71 29.714,-29.71c16.369,0 29.689,13.329 29.689,29.71c0,16.373 -13.32,29.693 -29.689,29.693c-16.386,0 -29.714,-13.32 -29.714,-29.693Z" />
+        </svg>
+    </a>
+    <a target="_blank" rel="noopener noreferrer" aria-label="share Self-Attention and Multi-Head Attention on facebook"
+        href="https://facebook.com/sharer/sharer.php?u=https%3a%2f%2fdavid-hoangt.github.io%2fposts%2f2026-03-30-self-attn%2f">
+        <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve">
+            <path
+                d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-106.468,0l0,-192.915l66.6,0l12.672,-82.621l-79.272,0l0,-53.617c0,-22.603 11.073,-44.636 46.58,-44.636l36.042,0l0,-70.34c0,0 -32.71,-5.582 -63.982,-5.582c-65.288,0 -107.96,39.569 -107.96,111.204l0,62.971l-72.573,0l0,82.621l72.573,0l0,192.915l-191.104,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Z" />
+        </svg>
+    </a>
+    <a target="_blank" rel="noopener noreferrer" aria-label="share Self-Attention and Multi-Head Attention on whatsapp"
+        href="https://api.whatsapp.com/send?text=Self-Attention%20and%20Multi-Head%20Attention%20-%20https%3a%2f%2fdavid-hoangt.github.io%2fposts%2f2026-03-30-self-attn%2f">
+        <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve">
+            <path
+                d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-386.892,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Zm-58.673,127.703c-33.842,-33.881 -78.847,-52.548 -126.798,-52.568c-98.799,0 -179.21,80.405 -179.249,179.234c-0.013,31.593 8.241,62.428 23.927,89.612l-25.429,92.884l95.021,-24.925c26.181,14.28 55.659,21.807 85.658,21.816l0.074,0c98.789,0 179.206,-80.413 179.247,-179.243c0.018,-47.895 -18.61,-92.93 -52.451,-126.81Zm-126.797,275.782l-0.06,0c-26.734,-0.01 -52.954,-7.193 -75.828,-20.767l-5.441,-3.229l-56.386,14.792l15.05,-54.977l-3.542,-5.637c-14.913,-23.72 -22.791,-51.136 -22.779,-79.287c0.033,-82.142 66.867,-148.971 149.046,-148.971c39.793,0.014 77.199,15.531 105.329,43.692c28.128,28.16 43.609,65.592 43.594,105.4c-0.034,82.149 -66.866,148.983 -148.983,148.984Zm81.721,-111.581c-4.479,-2.242 -26.499,-13.075 -30.604,-14.571c-4.105,-1.495 -7.091,-2.241 -10.077,2.241c-2.986,4.483 -11.569,14.572 -14.182,17.562c-2.612,2.988 -5.225,3.364 -9.703,1.12c-4.479,-2.241 -18.91,-6.97 -36.017,-22.23c-13.314,-11.876 -22.304,-26.542 -24.916,-31.026c-2.612,-4.484 -0.279,-6.908 1.963,-9.14c2.016,-2.007 4.48,-5.232 6.719,-7.847c2.24,-2.615 2.986,-4.484 4.479,-7.472c1.493,-2.99 0.747,-5.604 -0.374,-7.846c-1.119,-2.241 -10.077,-24.288 -13.809,-33.256c-3.635,-8.733 -7.327,-7.55 -10.077,-7.688c-2.609,-0.13 -5.598,-0.158 -8.583,-0.158c-2.986,0 -7.839,1.121 -11.944,5.604c-4.105,4.484 -15.675,15.32 -15.675,37.364c0,22.046 16.048,43.342 18.287,46.332c2.24,2.99 31.582,48.227 76.511,67.627c10.685,4.615 19.028,7.371 25.533,9.434c10.728,3.41 20.492,2.929 28.209,1.775c8.605,-1.285 26.499,-10.833 30.231,-21.295c3.732,-10.464 3.732,-19.431 2.612,-21.298c-1.119,-1.869 -4.105,-2.99 -8.583,-5.232Z" />
+        </svg>
+    </a>
+    <a target="_blank" rel="noopener noreferrer" aria-label="share Self-Attention and Multi-Head Attention on telegram"
+        href="https://telegram.me/share/url?text=Self-Attention%20and%20Multi-Head%20Attention&amp;url=https%3a%2f%2fdavid-hoangt.github.io%2fposts%2f2026-03-30-self-attn%2f">
+        <svg version="1.1" xml:space="preserve" viewBox="2 2 28 28">
+            <path
+                d="M26.49,29.86H5.5a3.37,3.37,0,0,1-2.47-1,3.35,3.35,0,0,1-1-2.47V5.48A3.36,3.36,0,0,1,3,3,3.37,3.37,0,0,1,5.5,2h21A3.38,3.38,0,0,1,29,3a3.36,3.36,0,0,1,1,2.46V26.37a3.35,3.35,0,0,1-1,2.47A3.38,3.38,0,0,1,26.49,29.86Zm-5.38-6.71a.79.79,0,0,0,.85-.66L24.73,9.24a.55.55,0,0,0-.18-.46.62.62,0,0,0-.41-.17q-.08,0-16.53,6.11a.59.59,0,0,0-.41.59.57.57,0,0,0,.43.52l4,1.24,1.61,4.83a.62.62,0,0,0,.63.43.56.56,0,0,0,.4-.17L16.54,20l4.09,3A.9.9,0,0,0,21.11,23.15ZM13.8,20.71l-1.21-4q8.72-5.55,8.78-5.55c.15,0,.23,0,.23.16a.18.18,0,0,1,0,.06s-2.51,2.3-7.52,6.8Z" />
+        </svg>
+    </a>
+</div>
+
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+    <span>&copy; 2026 <a href="../../">David&#39;s Whiteboard</a></span>
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &amp;
+        <a href="https://git.io/hugopapermod" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+<script>
+    document.querySelectorAll('pre > code').forEach((codeblock) => {
+        const container = codeblock.parentNode.parentNode;
+
+        const copybutton = document.createElement('button');
+        copybutton.classList.add('copy-code');
+        copybutton.innerText = 'copy';
+
+        function copyingDone() {
+            copybutton.innerText = 'copied!';
+            setTimeout(() => {
+                copybutton.innerText = 'copy';
+            }, 2000);
+        }
+
+        copybutton.addEventListener('click', (cb) => {
+            if ('clipboard' in navigator) {
+                navigator.clipboard.writeText(codeblock.textContent);
+                copyingDone();
+                return;
+            }
+
+            const range = document.createRange();
+            range.selectNodeContents(codeblock);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+            try {
+                document.execCommand('copy');
+                copyingDone();
+            } catch (e) { };
+            selection.removeRange(range);
+        });
+
+        if (container.classList.contains("highlight")) {
+            container.appendChild(copybutton);
+        } else if (container.parentNode.firstChild == container) {
+            
+        } else if (codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.nodeName == "TABLE") {
+            
+            codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.appendChild(copybutton);
+        } else {
+            
+            codeblock.parentNode.appendChild(copybutton);
+        }
+    });
+</script>
+</body>
+</html>

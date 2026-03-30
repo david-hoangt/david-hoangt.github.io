@@ -1,0 +1,470 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>Tags on David&#39;s Log</title>
+    <link>../tags/</link>
+    <description>Recent content in Tags on David&#39;s Log</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Thu, 01 May 2025 00:00:00 +0000</lastBuildDate><atom:link href="../tags/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Language-Model</title>
+      <link>../tags/language-model/</link>
+      <pubDate>Thu, 01 May 2025 00:00:00 +0000</pubDate>
+      
+      <guid>../tags/language-model/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Long-Read</title>
+      <link>../tags/long-read/</link>
+      <pubDate>Thu, 01 May 2025 00:00:00 +0000</pubDate>
+      
+      <guid>../tags/long-read/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Reasoning</title>
+      <link>../tags/reasoning/</link>
+      <pubDate>Thu, 01 May 2025 00:00:00 +0000</pubDate>
+      
+      <guid>../tags/reasoning/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Reinforcement-Learning</title>
+      <link>../tags/reinforcement-learning/</link>
+      <pubDate>Thu, 01 May 2025 00:00:00 +0000</pubDate>
+      
+      <guid>../tags/reinforcement-learning/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Alignment</title>
+      <link>../tags/alignment/</link>
+      <pubDate>Thu, 28 Nov 2024 00:00:00 +0000</pubDate>
+      
+      <guid>../tags/alignment/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Rlhf</title>
+      <link>../tags/rlhf/</link>
+      <pubDate>Thu, 28 Nov 2024 00:00:00 +0000</pubDate>
+      
+      <guid>../tags/rlhf/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Safety</title>
+      <link>../tags/safety/</link>
+      <pubDate>Thu, 28 Nov 2024 00:00:00 +0000</pubDate>
+      
+      <guid>../tags/safety/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Factuality</title>
+      <link>../tags/factuality/</link>
+      <pubDate>Sun, 07 Jul 2024 00:00:00 +0000</pubDate>
+      
+      <guid>../tags/factuality/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Hallucination</title>
+      <link>../tags/hallucination/</link>
+      <pubDate>Sun, 07 Jul 2024 00:00:00 +0000</pubDate>
+      
+      <guid>../tags/hallucination/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Nlp</title>
+      <link>../tags/nlp/</link>
+      <pubDate>Sun, 07 Jul 2024 00:00:00 +0000</pubDate>
+      
+      <guid>../tags/nlp/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Generative-Model</title>
+      <link>../tags/generative-model/</link>
+      <pubDate>Fri, 12 Apr 2024 00:00:00 +0000</pubDate>
+      
+      <guid>../tags/generative-model/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Video-Generation</title>
+      <link>../tags/video-generation/</link>
+      <pubDate>Fri, 12 Apr 2024 00:00:00 +0000</pubDate>
+      
+      <guid>../tags/video-generation/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Data</title>
+      <link>../tags/data/</link>
+      <pubDate>Mon, 05 Feb 2024 00:00:00 +0000</pubDate>
+      
+      <guid>../tags/data/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Data-Quality</title>
+      <link>../tags/data-quality/</link>
+      <pubDate>Mon, 05 Feb 2024 00:00:00 +0000</pubDate>
+      
+      <guid>../tags/data-quality/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Human-Ai</title>
+      <link>../tags/human-ai/</link>
+      <pubDate>Mon, 05 Feb 2024 00:00:00 +0000</pubDate>
+      
+      <guid>../tags/human-ai/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Adversarial Attacks</title>
+      <link>../tags/adversarial-attacks/</link>
+      <pubDate>Wed, 25 Oct 2023 00:00:00 +0000</pubDate>
+      
+      <guid>../tags/adversarial-attacks/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Redteam</title>
+      <link>../tags/redteam/</link>
+      <pubDate>Wed, 25 Oct 2023 00:00:00 +0000</pubDate>
+      
+      <guid>../tags/redteam/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Robustness</title>
+      <link>../tags/robustness/</link>
+      <pubDate>Wed, 25 Oct 2023 00:00:00 +0000</pubDate>
+      
+      <guid>../tags/robustness/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Agent</title>
+      <link>../tags/agent/</link>
+      <pubDate>Fri, 23 Jun 2023 00:00:00 +0000</pubDate>
+      
+      <guid>../tags/agent/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Prompting</title>
+      <link>../tags/prompting/</link>
+      <pubDate>Fri, 23 Jun 2023 00:00:00 +0000</pubDate>
+      
+      <guid>../tags/prompting/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Steerability</title>
+      <link>../tags/steerability/</link>
+      <pubDate>Fri, 23 Jun 2023 00:00:00 +0000</pubDate>
+      
+      <guid>../tags/steerability/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Architecture</title>
+      <link>../tags/architecture/</link>
+      <pubDate>Fri, 27 Jan 2023 00:00:00 +0000</pubDate>
+      
+      <guid>../tags/architecture/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Attention</title>
+      <link>../tags/attention/</link>
+      <pubDate>Fri, 27 Jan 2023 00:00:00 +0000</pubDate>
+      
+      <guid>../tags/attention/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Foundation</title>
+      <link>../tags/foundation/</link>
+      <pubDate>Fri, 27 Jan 2023 00:00:00 +0000</pubDate>
+      
+      <guid>../tags/foundation/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Transformer</title>
+      <link>../tags/transformer/</link>
+      <pubDate>Fri, 27 Jan 2023 00:00:00 +0000</pubDate>
+      
+      <guid>../tags/transformer/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Long-Read&#34;</title>
+      <link>../tags/long-read/</link>
+      <pubDate>Tue, 10 Jan 2023 10:00:00 -0700</pubDate>
+      
+      <guid>../tags/long-read/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Learning-Dynamics</title>
+      <link>../tags/learning-dynamics/</link>
+      <pubDate>Thu, 08 Sep 2022 10:00:00 -0700</pubDate>
+      
+      <guid>../tags/learning-dynamics/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Neural-Tangent-Kernel</title>
+      <link>../tags/neural-tangent-kernel/</link>
+      <pubDate>Thu, 08 Sep 2022 10:00:00 -0700</pubDate>
+      
+      <guid>../tags/neural-tangent-kernel/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Vision-Language-Model</title>
+      <link>../tags/vision-language-model/</link>
+      <pubDate>Thu, 09 Jun 2022 15:10:30 -0700</pubDate>
+      
+      <guid>../tags/vision-language-model/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Vision-Model</title>
+      <link>../tags/vision-model/</link>
+      <pubDate>Thu, 09 Jun 2022 15:10:30 -0700</pubDate>
+      
+      <guid>../tags/vision-model/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Data-Augmentation</title>
+      <link>../tags/data-augmentation/</link>
+      <pubDate>Fri, 15 Apr 2022 15:10:30 -0700</pubDate>
+      
+      <guid>../tags/data-augmentation/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Data-Generation</title>
+      <link>../tags/data-generation/</link>
+      <pubDate>Fri, 15 Apr 2022 15:10:30 -0700</pubDate>
+      
+      <guid>../tags/data-generation/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Active-Learning</title>
+      <link>../tags/active-learning/</link>
+      <pubDate>Sun, 20 Feb 2022 00:00:00 +0000</pubDate>
+      
+      <guid>../tags/active-learning/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Unsupervised-Learning</title>
+      <link>../tags/unsupervised-learning/</link>
+      <pubDate>Sun, 05 Dec 2021 00:00:00 +0000</pubDate>
+      
+      <guid>../tags/unsupervised-learning/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Image-Generation</title>
+      <link>../tags/image-generation/</link>
+      <pubDate>Sun, 11 Jul 2021 00:00:00 +0000</pubDate>
+      
+      <guid>../tags/image-generation/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Math-Heavy</title>
+      <link>../tags/math-heavy/</link>
+      <pubDate>Sun, 11 Jul 2021 00:00:00 +0000</pubDate>
+      
+      <guid>../tags/math-heavy/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Representation-Learning</title>
+      <link>../tags/representation-learning/</link>
+      <pubDate>Mon, 31 May 2021 00:00:00 +0000</pubDate>
+      
+      <guid>../tags/representation-learning/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Reinforcement-Learning&#34;</title>
+      <link>../tags/reinforcement-learning/</link>
+      <pubDate>Sat, 02 Jan 2021 00:00:00 +0000</pubDate>
+      
+      <guid>../tags/reinforcement-learning/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Auto-ML</title>
+      <link>../tags/auto-ml/</link>
+      <pubDate>Thu, 06 Aug 2020 00:00:00 +0000</pubDate>
+      
+      <guid>../tags/auto-ml/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Evolution</title>
+      <link>../tags/evolution/</link>
+      <pubDate>Thu, 06 Aug 2020 00:00:00 +0000</pubDate>
+      
+      <guid>../tags/evolution/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Exploration</title>
+      <link>../tags/exploration/</link>
+      <pubDate>Sun, 07 Jun 2020 00:00:00 +0000</pubDate>
+      
+      <guid>../tags/exploration/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Meta-Learning</title>
+      <link>../tags/meta-learning/</link>
+      <pubDate>Wed, 29 Jan 2020 00:00:00 +0000</pubDate>
+      
+      <guid>../tags/meta-learning/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Object-Recognition</title>
+      <link>../tags/object-recognition/</link>
+      <pubDate>Sun, 10 Nov 2019 00:00:00 +0000</pubDate>
+      
+      <guid>../tags/object-recognition/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Robotics</title>
+      <link>../tags/robotics/</link>
+      <pubDate>Sun, 05 May 2019 00:00:00 +0000</pubDate>
+      
+      <guid>../tags/robotics/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Information-Theory</title>
+      <link>../tags/information-theory/</link>
+      <pubDate>Thu, 14 Mar 2019 00:00:00 +0000</pubDate>
+      
+      <guid>../tags/information-theory/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Object-Detection</title>
+      <link>../tags/object-detection/</link>
+      <pubDate>Thu, 27 Dec 2018 00:00:00 +0000</pubDate>
+      
+      <guid>../tags/object-detection/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Autoencoder</title>
+      <link>../tags/autoencoder/</link>
+      <pubDate>Sun, 12 Aug 2018 00:00:00 +0000</pubDate>
+      
+      <guid>../tags/autoencoder/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Rnn</title>
+      <link>../tags/rnn/</link>
+      <pubDate>Sun, 24 Jun 2018 00:00:00 +0000</pubDate>
+      
+      <guid>../tags/rnn/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Tensorflow</title>
+      <link>../tags/tensorflow/</link>
+      <pubDate>Sat, 05 May 2018 00:00:00 +0000</pubDate>
+      
+      <guid>../tags/tensorflow/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Tutorial</title>
+      <link>../tags/tutorial/</link>
+      <pubDate>Sat, 05 May 2018 00:00:00 +0000</pubDate>
+      
+      <guid>../tags/tutorial/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Gan</title>
+      <link>../tags/gan/</link>
+      <pubDate>Sun, 20 Aug 2017 00:00:00 +0000</pubDate>
+      
+      <guid>../tags/gan/</guid>
+      <description></description>
+    </item>
+    
+  </channel>
+</rss>

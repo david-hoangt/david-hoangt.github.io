@@ -1,0 +1,11 @@
+[
+  {
+    "slug": "2026-03-30-self-attn",
+    "title": "Self-Attention and Multi-Head Attention",
+    "date": "2026-03-30",
+    "summary": "The single equation that changed NLP shipped in 2017 inside Attention Is All You Need (Vaswani et al.). By the end of this post you will have built, from scratch in PyTorch, working implementations of Self-Attention, Multi-Head Attention, Causal Self-Attention, and Cross-Attention — the four building blocks that power every transformer.",
+    "tags": ["transformer", "attention", "deep-learning", "long-read"],
+    "readingTime": "20 min",
+    "author": "David Hoang"
+  }
+]
