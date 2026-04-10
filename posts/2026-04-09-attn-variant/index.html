@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>Attention Variants: From Self-Attention to GQA, MLA, SWA, and Beyond | David&#39;s Whiteboard</title>
+<meta name="keywords" content="transformer, attention, deep-learning, long-read" />
+<meta name="description" content="Building every major attention mechanism from scratch in PyTorch — GQA, MLA, SWA, NSA, Gated Attention, and Hybrid Attention.">
+<meta name="author" content="David Hoang">
+<link rel="canonical" href="../../posts/2026-04-09-attn-variant/" />
+<link crossorigin="anonymous" href="../../assets/css/stylesheet.min.51b2420ff5ea1215cdf584af7ba59d5fea94201c33f25109d6448c7271631316.css" integrity="sha256-UbJCD/XqEhXN9YSve6WdX+qUIBwz8lEJ1kSMcnFjExY=" rel="preload stylesheet" as="style">
+<script defer crossorigin="anonymous" src="../../assets/js/highlight.min.2eadbb982468c11a433a3e291f01326f2ba43f065e256bf792dbd79640a92316.js" integrity="sha256-Lq27mCRowRpDOj4pHwEybyukPwZeJWv3ktvXlkCpIxY="
+    onload="hljs.initHighlightingOnLoad();"></script>
+<link rel="icon" href="../../favicon_coffee.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="../../favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="../../favicon-32x32.png">
+<link rel="apple-touch-icon" href="../../apple-touch-icon.png">
+<link rel="mask-icon" href="../../safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="../../posts/2026-04-09-attn-variant/" />
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --hljs-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+      <script async src="https://www.googletagmanager.com/gtag/js?id=G-HFT45VFBX6"></script>
+      <script>
+        var doNotTrack = false;
+        if ( false ) {
+          var dnt = (navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack);
+          var doNotTrack = (dnt == "1" || dnt == "yes");
+        }
+        if (!doNotTrack) {
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-HFT45VFBX6');
+        }
+      </script><meta property="og:title" content="Attention Variants: From Self-Attention to GQA, MLA, SWA, and Beyond" />
+<meta property="og:description" content="Building every major attention mechanism from scratch in PyTorch — GQA, MLA, SWA, NSA, Gated Attention, and Hybrid Attention." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="../../posts/2026-04-09-attn-variant/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2026-04-09T00:00:00&#43;00:00" />
+<meta property="article:modified_time" content="2026-04-09T00:00:00&#43;00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Attention Variants: From Self-Attention to GQA, MLA, SWA, and Beyond"/>
+<meta name="twitter:description" content="Building every major attention mechanism from scratch in PyTorch — GQA, MLA, SWA, NSA, Gated Attention, and Hybrid Attention."/>
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "Posts",
+      "item": "../../posts/"
+    },
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "Attention Variants: From Self-Attention to GQA, MLA, SWA, and Beyond",
+      "item": "../../posts/2026-04-09-attn-variant/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Attention Variants: From Self-Attention to GQA, MLA, SWA, and Beyond",
+  "name": "Attention Variants: From Self-Attention to GQA, MLA, SWA, and Beyond",
+  "description": "Building every major attention mechanism from scratch in PyTorch — GQA, MLA, SWA, NSA, Gated Attention, and Hybrid Attention.",
+  "keywords": [
+    "transformer", "attention", "deep-learning", "long-read"
+  ],
+  "articleBody": "Six efficiency variants solve the bottlenecks of standard attention: GQA, MLA, SWA, NSA, Gated Attention, and Hybrid Attention. Each modifies the four foundation mechanisms — Self-Attention, MHA, Causal, and Cross-Attention. Built from scratch in PyTorch with full implementations.",
+  "wordCount" : "7500",
+  "inLanguage": "en",
+  "datePublished": "2026-04-09T00:00:00Z",
+  "dateModified": "2026-04-09T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "David Hoang"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "../../posts/2026-04-09-attn-variant/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "David's Log",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "../../favicon_coffee.ico"
+    }
+  }
+}
+</script>
+<style>.logo{left:230px!important}
+.header{position:sticky;top:0;z-index:999;background:var(--theme,#fff)}</style>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<script>
+  MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$','$$'], ['\\[', '\\]']],
+      processEscapes: true,
+      processEnvironments: true
+    },
+    options: {
+      skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+    }
+  };
+
+  window.addEventListener('load', (event) => {
+      document.querySelectorAll("mjx-container").forEach(function(x){
+        x.parentElement.classList += 'has-jax'})
+    });
+
+</script>
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script type="text/javascript" id="MathJax-script" async
+  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="../../" accesskey="h" title="David&#39;s Whiteboard (Alt + H)">David&#39;s Whiteboard</a>
+            <span class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+                <ul class="lang-switch"><li>|</li>
+                </ul>
+            </span>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="../../" title="Posts">
+                    <span>Posts</span>
+                </a>
+            </li>
+            <li>
+                <a href="../../archives" title="Archive">
+                    <span>Archive</span>
+                </a>
+            </li>
+            <li>
+                <a href="../../search/" title="Search (Alt &#43; /)" accesskey=/>
+                    <span>Search</span>
+                </a>
+            </li>
+            <li>
+                <a href="../../tags/" title="Tags">
+                    <span>Tags</span>
+                </a>
+            </li>
+
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+
+    <h1 class="post-title">
+      Attention Variants: From Self-Attention to GQA, MLA, SWA, and Beyond
+    </h1>
+    <div class="post-meta">Date: April 9, 2026  |  Estimated Reading Time: 45 min  |  Author: David Hoang
+
+</div>
+  </header> <div class="toc">
+    <details >
+        <summary accesskey="c" title="(Alt + C)">
+            <span class="details">Table of Contents</span>
+        </summary>
+
+        <div class="inner"><ul>
+                <li>
+                    <a href="#introduction" aria-label="Introduction">Introduction</a>
+                </li>
+                <li>
+                    <a href="#quick-recap-the-four-foundations" aria-label="Quick Recap: The Four Foundations">Quick Recap: The Four Foundations</a>
+                </li>
+                <li>
+                    <a href="#grouped-query-attention-gqa" aria-label="Grouped-Query Attention (GQA)">Grouped-Query Attention (GQA)</a><ul>
+
+                <li>
+                    <a href="#the-sharing-mechanism" aria-label="The Sharing Mechanism">The Sharing Mechanism</a></li>
+                <li>
+                    <a href="#the-spectrum-mha-gqa-mqa" aria-label="The Spectrum: MHA → GQA → MQA">The Spectrum: MHA &rarr; GQA &rarr; MQA</a></li>
+                <li>
+                    <a href="#implementation-detail-expand-vs-repeat_interleave" aria-label="Implementation Detail: expand vs. repeat_interleave">Implementation Detail: expand vs. repeat_interleave</a></li>
+                <li>
+                    <a href="#gotchas-and-trade-offs" aria-label="Gotchas and Trade-offs">Gotchas and Trade-offs</a></li>
+                <li>
+                    <a href="#example-architectures" aria-label="Example Architectures">Example Architectures</a></li>
+                <li>
+                    <a href="#implementation-from-scratch" aria-label="Implementation from Scratch">Implementation from Scratch</a></li>
+                <li>
+                    <a href="#key-takeaways" aria-label="Key Takeaways">Key Takeaways</a></li></ul>
+                </li>
+                <li>
+                    <a href="#multi-head-latent-attention-mla" aria-label="Multi-Head Latent Attention (MLA)">Multi-Head Latent Attention (MLA)</a><ul>
+
+                <li>
+                    <a href="#cache-comparison" aria-label="Cache Comparison">Cache Comparison</a></li>
+                <li>
+                    <a href="#the-absorption-trick" aria-label="The Absorption Trick">The Absorption Trick</a></li>
+                <li>
+                    <a href="#gotchas-and-trade-offs-1" aria-label="Gotchas and Trade-offs">Gotchas and Trade-offs</a></li>
+                <li>
+                    <a href="#example-architectures-1" aria-label="Example Architectures">Example Architectures</a></li>
+                <li>
+                    <a href="#implementation-from-scratch-1" aria-label="Implementation from Scratch">Implementation from Scratch</a></li>
+                <li>
+                    <a href="#key-takeaways-1" aria-label="Key Takeaways">Key Takeaways</a></li></ul>
+                </li>
+                <li>
+                    <a href="#sliding-window-attention-swa" aria-label="Sliding Window Attention (SWA)">Sliding Window Attention (SWA)</a><ul>
+
+                <li>
+                    <a href="#how-information-propagates" aria-label="How Information Propagates">How Information Propagates</a></li>
+                <li>
+                    <a href="#the-hybrid-pattern-swa-global-layers" aria-label="The Hybrid Pattern: SWA + Global Layers">The Hybrid Pattern: SWA + Global Layers</a></li>
+                <li>
+                    <a href="#gotchas-and-trade-offs-2" aria-label="Gotchas and Trade-offs">Gotchas and Trade-offs</a></li>
+                <li>
+                    <a href="#example-architectures-2" aria-label="Example Architectures">Example Architectures</a></li>
+                <li>
+                    <a href="#implementation-from-scratch-2" aria-label="Implementation from Scratch">Implementation from Scratch</a></li>
+                <li>
+                    <a href="#key-takeaways-2" aria-label="Key Takeaways">Key Takeaways</a></li></ul>
+                </li>
+                <li>
+                    <a href="#native-sparse-attention-nsa" aria-label="Native Sparse Attention (NSA)">Native Sparse Attention (NSA)</a><ul>
+
+                <li>
+                    <a href="#the-three-paths" aria-label="The Three Paths">The Three Paths</a></li>
+                <li>
+                    <a href="#the-scorer-mechanism" aria-label="The Scorer Mechanism">The Scorer Mechanism</a></li>
+                <li>
+                    <a href="#gotchas-and-trade-offs-3" aria-label="Gotchas and Trade-offs">Gotchas and Trade-offs</a></li>
+                <li>
+                    <a href="#example-architectures-3" aria-label="Example Architectures">Example Architectures</a></li>
+                <li>
+                    <a href="#implementation-from-scratch-3" aria-label="Implementation from Scratch">Implementation from Scratch</a></li>
+                <li>
+                    <a href="#key-takeaways-3" aria-label="Key Takeaways">Key Takeaways</a></li></ul>
+                </li>
+                <li>
+                    <a href="#gated-attention" aria-label="Gated Attention">Gated Attention</a><ul>
+
+                <li>
+                    <a href="#qk-norm-stabilizing-the-scores" aria-label="QK-Norm: Stabilizing the Scores">QK-Norm: Stabilizing the Scores</a></li>
+                <li>
+                    <a href="#gotchas-and-trade-offs-4" aria-label="Gotchas and Trade-offs">Gotchas and Trade-offs</a></li>
+                <li>
+                    <a href="#example-architectures-4" aria-label="Example Architectures">Example Architectures</a></li>
+                <li>
+                    <a href="#implementation-from-scratch-4" aria-label="Implementation from Scratch">Implementation from Scratch</a></li>
+                <li>
+                    <a href="#key-takeaways-4" aria-label="Key Takeaways">Key Takeaways</a></li></ul>
+                </li>
+                <li>
+                    <a href="#hybrid-attention" aria-label="Hybrid Attention">Hybrid Attention</a><ul>
+
+                <li>
+                    <a href="#linear-attention-the-lightweight-block" aria-label="Linear Attention: The Lightweight Block">Linear Attention: The Lightweight Block</a></li>
+                <li>
+                    <a href="#the-interleaving-strategy" aria-label="The Interleaving Strategy">The Interleaving Strategy</a></li>
+                <li>
+                    <a href="#gotchas-and-trade-offs-5" aria-label="Gotchas and Trade-offs">Gotchas and Trade-offs</a></li>
+                <li>
+                    <a href="#example-architectures-5" aria-label="Example Architectures">Example Architectures</a></li>
+                <li>
+                    <a href="#implementation-from-scratch-5" aria-label="Implementation from Scratch">Implementation from Scratch</a></li>
+                <li>
+                    <a href="#key-takeaways-5" aria-label="Key Takeaways">Key Takeaways</a></li></ul>
+                </li>
+                <li>
+                    <a href="#putting-it-all-together" aria-label="Putting It All Together">Putting It All Together</a>
+                </li>
+            </ul>
+        </div>
+    </details>
+</div>
+
+  <div class="post-content"><p><em>Building every major attention mechanism from scratch in PyTorch</em></p>
+<h1 id="introduction">Introduction<a hidden class="anchor" aria-hidden="true" href="#introduction">#</a></h1>
+<p>Scaled dot-product attention &mdash; <code>softmax(Q @ K.T / sqrt(d_k)) @ V</code> &mdash; shipped in 2017 and every LLM since runs on variants of it. The equation stayed the same; the bottlenecks changed. KV cache explodes with long contexts, quadratic cost kills throughput, training becomes unstable at 8B+ scale.</p>
+<p>Six efficiency variants solve these bottlenecks: <strong>GQA</strong>, <strong>MLA</strong>, <strong>SWA</strong>, <strong>NSA</strong>, <strong>Gated Attention</strong>, and <strong>Hybrid Attention</strong>. Each modifies the four foundation mechanisms &mdash; Self-Attention, MHA, Causal, and Cross-Attention &mdash; covered in the <a href="../../posts/2026-03-30-self-attn/">previous post</a>.</p>
+<p>Same running example throughout: <em>&ldquo;The CEO announced record earnings on Friday&rdquo;</em> &mdash; 7 tokens, <code>d_model = 64</code>.</p>
+
+<h1 id="quick-recap-the-four-foundations">Quick Recap: The Four Foundations<a hidden class="anchor" aria-hidden="true" href="#quick-recap-the-four-foundations">#</a></h1>
+<p>Full deep-dive with implementations in the <a href="../../posts/2026-03-30-self-attn/">previous post</a>. Here&rsquo;s what you need to follow the variants:</p>
+<ul>
+<li><strong>Self-Attention</strong> &mdash; <code>softmax(Q @ K.T / sqrt(d_k)) @ V</code>. Project each token into Q, K, V, compute pairwise relevance, weighted sum of values. <code>O(n&sup2; &times; d)</code> cost.</li>
+<li><strong>Multi-Head Attention (MHA)</strong> &mdash; <code>Concat(head_1, ..., head_h) @ W_O</code>. Run <strong>h</strong> parallel heads in <code>d_k = d_model / h</code> subspaces. Same compute, richer representations.</li>
+<li><strong>Causal Self-Attention</strong> &mdash; add <code>-inf</code> to future positions before softmax &rarr; lower-triangular matrix. Enables autoregressive generation. The causal constraint makes KV caching safe: past keys/values never change, so cache them to avoid recomputation.</li>
+<li><strong>Cross-Attention</strong> &mdash; Q from one sequence, K/V from another &rarr; rectangular <code>n x m</code> matrix. Standard for multimodal; replaced by concatenation in text-only LLMs.</li>
+</ul>
+<p>Every variant below modifies one of these four to solve a specific bottleneck: KV cache memory, sequence length scaling, training stability, or compute allocation.</p>
+
+<h1 id="grouped-query-attention-gqa">Grouped-Query Attention (GQA)<a hidden class="anchor" aria-hidden="true" href="#grouped-query-attention-gqa">#</a></h1>
+<p>MHA stores separate K and V tensors for every head. The KV cache scales as <code>2 * n_layers * n_heads * T * d_k</code> &mdash; for LLaMA 3 8B (32 layers, 32 heads, d_k=128) that&rsquo;s ~4 GB at 8K tokens and <strong>~67 GB at 128K</strong> in float16 (GB = 10&sup9; bytes throughout this post). Serving a single user burns an entire GPU&rsquo;s memory on cached keys and values. Can we share some of the K/V work across heads without collapsing to a single pattern?</p>
+<p>Ainslie et al. at Google Research answered this in <em>&ldquo;GQA: Training Generalized Multi-Query Transformer Models from Multi-Head Checkpoints&rdquo;</em> (<a href="https://arxiv.org/abs/2305.13245">EMNLP 2023</a>). The idea: group query heads into clusters that share a single K/V head. Instead of <code>n_heads</code> independent K/V projections, use <code>n_kv_heads</code> &mdash; cutting cache by a factor of <code>n_heads / n_kv_heads</code>.</p>
+<pre tabindex="0"><code>GQA: n_kv_heads &lt; n_heads, each KV head shared by (n_heads / n_kv_heads) query heads</code></pre>
+
+<h2 id="the-sharing-mechanism">The Sharing Mechanism<a hidden class="anchor" aria-hidden="true" href="#the-sharing-mechanism">#</a></h2>
+<p>MHA stores 4 separate K/V heads for our 4-head example &mdash; but &ldquo;CEO&rdquo; and &ldquo;announced&rdquo; don&rsquo;t need 4 independent key representations to be found. What if heads share K/V projections?</p>
+<figure>
+    <img src="2.%20attn-variants/asset/gqa_mqa_mha.png" />
+    <figcaption>MHA &rarr; GQA &rarr; MQA: progressively fewer KV heads, same 4 query heads. Cache shrinks by the sharing ratio.</figcaption>
+</figure>
+<ul>
+<li><strong>4 query heads, 2 KV heads</strong> &mdash; each KV head serves a group of 2 query heads</li>
+<li><strong>KV cache cut in half</strong>: only 2 K/V pairs cached instead of 4</li>
+<li><strong>Each query head keeps its own W_Q</strong> &mdash; diversity preserved where it matters</li>
+</ul>
+<p>With <code>d_model = 64</code>, <code>n_heads = 4</code>, <code>d_k = 16</code>, GQA with <code>n_kv_heads = 2</code> groups heads into pairs:</p>
+<pre tabindex="0"><code>Query heads:  [Q_0, Q_1, Q_2, Q_3]    — 4 independent query projections
+KV heads:     [KV_0,      KV_1     ]    — 2 shared KV projections
+Mapping:       Q_0, Q_1 -&gt; KV_0         — heads 0,1 share K_0, V_0
+               Q_2, Q_3 -&gt; KV_1         — heads 2,3 share K_1, V_1</code></pre>
+<ul>
+<li><strong>group_size</strong> = <code>n_heads / n_kv_heads</code> = 4 / 2 = 2 query heads per KV head</li>
+<li><strong>KV cache reduction</strong> = 2x (only 2 KV heads cached instead of 4)</li>
+<li><strong>Query diversity preserved</strong> &mdash; each query head still has its own W_Q projection</li>
+</ul>
+<figure>
+    <img src="2.%20attn-variants/asset/gqa.png" />
+    <figcaption>GQA head grouping: 4 query heads mapped to 2 shared KV heads</figcaption>
+</figure>
+
+<h2 id="the-spectrum-mha-gqa-mqa">The Spectrum: MHA &rarr; GQA &rarr; MQA<a hidden class="anchor" aria-hidden="true" href="#the-spectrum-mha-gqa-mqa">#</a></h2>
+<p>GQA is a continuum between MHA and Multi-Query Attention (MQA):</p>
+<ul>
+<li><strong>MHA</strong> &mdash; <code>n_kv_heads = n_heads</code>. Every head has its own K/V. Maximum quality, maximum cache</li>
+<li><strong>GQA</strong> &mdash; <code>1 &lt; n_kv_heads &lt; n_heads</code>. Groups share K/V. Tunable quality/cache trade-off</li>
+<li><strong>MQA</strong> &mdash; <code>n_kv_heads = 1</code>. All heads share one K/V pair. Minimum cache, some quality loss</li>
+</ul>
+<pre tabindex="0"><code>                MHA (n_kv=32)          GQA (n_kv=8)          MQA (n_kv=1)
+KV cache:       32 * T * d_k * 2      8 * T * d_k * 2       1 * T * d_k * 2
+LLaMA 3 8B:     ~67 GB @ 128k         ~17 GB @ 128k         ~2 GB @ 128k
+Quality:        Baseline               ~Baseline              Slight degradation</code></pre>
+<p>The original paper evaluated this at T5 XXL scale &mdash; GQA-8 closed nearly all the quality gap vs. MHA (47.1 vs. 47.2 ROUGE-1 on CNN/DailyMail, 81.6 vs. 81.9 TriviaQA F1) while running ~5x faster (0.28s vs. 1.51s per sample). MQA was marginally faster (0.24s) but showed noticeable quality degradation (46.6 ROUGE-1) that GQA avoids.</p>
+
+<h2 id="implementation-detail-expand-vs-repeat_interleave">Implementation Detail: expand vs. repeat_interleave<a hidden class="anchor" aria-hidden="true" href="#implementation-detail-expand-vs-repeat_interleave">#</a></h2>
+<p>The key implementation choice: how to broadcast <code>n_kv_heads</code> K/V tensors to <code>n_heads</code> query heads. Two approaches yield identical results:</p>
+<pre tabindex="0"><code># Option 1: expand (no memory copy, just a view)
+K = K_kv[:, :, None, :, :].expand(-1, -1, group_size, -1, -1).reshape(B, n_heads, T, d_k)
+
+# Option 2: repeat_interleave (explicit copy)
+K = K_kv.repeat_interleave(group_size, dim=1)    # [batch, n_heads, seq_len, d_k]</code></pre>
+<ul>
+<li><code>expand</code> creates a view with no memory copy &mdash; more efficient during training</li>
+<li><code>repeat_interleave</code> copies the data &mdash; simpler to reason about, same result</li>
+</ul>
+
+<h2 id="gotchas-and-trade-offs">Gotchas and Trade-offs<a hidden class="anchor" aria-hidden="true" href="#gotchas-and-trade-offs">#</a></h2>
+<ul>
+<li><strong>n_heads must be divisible by n_kv_heads</strong> &mdash; otherwise grouping is uneven</li>
+<li><strong>Quality is surprisingly robust</strong>: GQA-8 (LLaMA 3&rsquo;s config) matches MHA on most benchmarks while cutting KV cache 4x</li>
+<li><strong>Doesn&rsquo;t reduce compute</strong> &mdash; same number of attention operations; only memory for cached K/V shrinks</li>
+<li><strong>Uptraining from MHA to GQA</strong>: mean-pool K/V weights within each group, fine-tune for 5% of pre-training steps (Ainslie et al., 2023)</li>
+</ul>
+
+<h2 id="example-architectures">Example Architectures<a hidden class="anchor" aria-hidden="true" href="#example-architectures">#</a></h2>
+<ul>
+<li><strong>LLaMA 3 8B</strong> &mdash; 32 query heads, 8 KV heads (group_size = 4)</li>
+<li><strong>Mistral 7B</strong> &mdash; 32 query heads, 8 KV heads</li>
+<li><strong>Gemma 2</strong> &mdash; 16 query heads, 8 KV heads (group_size = 2)</li>
+</ul>
+
+<h2 id="implementation-from-scratch">Implementation from Scratch<a hidden class="anchor" aria-hidden="true" href="#implementation-from-scratch">#</a></h2>
+<pre tabindex="0"><code class="language-python">class GroupedQueryAttention(nn.Module):
+    def __init__(self, d_model: int, n_heads: int, n_kv_heads: int):
+        super().__init__()
+        self.n_heads = n_heads
+        self.n_kv_heads = n_kv_heads
+        self.d_k = d_model // n_heads
+        self.group_size = n_heads // n_kv_heads
+        self.W_q = nn.Linear(d_model, n_heads * self.d_k, bias=False)
+        self.W_k = nn.Linear(d_model, n_kv_heads * self.d_k, bias=False)
+        self.W_v = nn.Linear(d_model, n_kv_heads * self.d_k, bias=False)
+        self.W_o = nn.Linear(n_heads * self.d_k, d_model, bias=False)
+
+    def forward(self, x: torch.Tensor, mask=None):
+        B, T, _ = x.shape
+        Q = self.W_q(x).view(B, T, self.n_heads, self.d_k).transpose(1, 2)       # (B, n_heads, T, d_k)
+        K = self.W_k(x).view(B, T, self.n_kv_heads, self.d_k).transpose(1, 2)    # (B, n_kv_heads, T, d_k)
+        V = self.W_v(x).view(B, T, self.n_kv_heads, self.d_k).transpose(1, 2)
+        K = K.repeat_interleave(self.group_size, dim=1)  # (B, n_heads, T, d_k)
+        V = V.repeat_interleave(self.group_size, dim=1)
+        scores = torch.matmul(Q, K.transpose(-2, -1)) / math.sqrt(self.d_k)
+        if mask is not None:
+            scores = scores.masked_fill(mask, float(&quot;-inf&quot;))
+        weights = F.softmax(scores, dim=-1)               # (B, n_heads, T, T)
+        context = torch.matmul(weights, V)                 # (B, n_heads, T, d_k)
+        context = context.transpose(1, 2).contiguous().view(B, T, -1)
+        return self.W_o(context), weights</code></pre>
+<p>Run the full implementation with shape checks and KV cache comparison in the <a href="https://github.com/david-hoangt/llm_from_scratch/blob/main/attention/4.%20attention_variants.ipynb">attention variants notebook</a>.</p>
+
+<h2 id="key-takeaways">Key Takeaways<a hidden class="anchor" aria-hidden="true" href="#key-takeaways">#</a></h2>
+<p>GQA shares K/V heads across groups of query heads &mdash; cutting KV cache by <code>n_heads / n_kv_heads</code> with minimal quality loss. The standard choice for modern open-weight LLMs.</p>
+<p>DeepSeek looked at this and asked a different question: why cache full-dimensional vectors at all?</p>
+
+<h1 id="multi-head-latent-attention-mla">Multi-Head Latent Attention (MLA)<a hidden class="anchor" aria-hidden="true" href="#multi-head-latent-attention-mla">#</a></h1>
+<p>GQA reduces KV cache by sharing heads. DeepSeek took a different approach entirely in <em>&ldquo;DeepSeek-V2&rdquo;</em> (<a href="https://arxiv.org/abs/2405.04434">May 2024</a>): compress K and V into a low-rank latent <em>before</em> caching, then decompress during attention. Instead of caching <code>n_kv_heads</code> full-dimensional vectors, cache one small latent per position &mdash; achieving a <strong>93.3% KV cache reduction</strong> compared to their prior DeepSeek 67B model, with no quality loss.</p>
+<pre tabindex="0"><code>c = X @ W_down                     # compress: [batch, seq_len, d_latent]
+K = c @ W_up_K                     # decompress for K: [batch, seq_len, n_heads * d_k]
+V = c @ W_up_V                     # decompress for V: [batch, seq_len, n_heads * d_v]</code></pre>
+<ul>
+<li><strong>W_down</strong> <code>[d_model, d_latent]</code> &mdash; Down-projection into latent bottleneck</li>
+<li><strong>d_latent</strong> <code>&lt;&lt; d_model</code> &mdash; The compression dimension (e.g., 512 vs 4096)</li>
+<li><strong>W_up_K, W_up_V</strong> <code>[d_latent, n_heads * d_k]</code> &mdash; Up-project back to full K/V</li>
+<li><strong>Cache</strong> stores only <code>c</code> at <code>[batch, seq_len, d_latent]</code> &mdash; not the full K and V</li>
+</ul>
+<p>In our running example, each of the 7 tokens has a 64-dim embedding. With <code>d_latent = 16</code>:</p>
+<ul>
+<li><strong>W_down</strong> compresses each token from 64 &rarr; 16 dimensions &mdash; &ldquo;announced&rdquo; becomes a 16-dim latent capturing its key/value essence</li>
+<li><strong>W_up_K / W_up_V</strong> decompress back to 64 dims when attention is computed</li>
+<li><strong>Cache</strong>: 7 latent vectors (7 &times; 16 = 112 elements) instead of full K + V (7 &times; 64 &times; 2 = 896) &mdash; <strong>8x reduction</strong></li>
+</ul>
+<figure>
+    <img src="2.%20attn-variants/asset/mla_cache.png" />
+    <figcaption>Only the latent c is cached &mdash; d_latent &lt;&lt; d_model shrinks KV cache by the compression ratio.</figcaption>
+</figure>
+
+<h2 id="cache-comparison">Cache Comparison<a hidden class="anchor" aria-hidden="true" href="#cache-comparison">#</a></h2>
+<p>How much does this actually save? Compare the three approaches for a 32-layer model with <code>d_model = 4096</code>, <code>d_k = 128</code>, <code>T = 128k</code> in float16:</p>
+<pre tabindex="0"><code>MHA (32 heads):     2 * 32 * 32 * 128k * 128 * 2 bytes  = ~67 GB
+GQA (8 KV heads):   2 * 32 *  8 * 128k * 128 * 2 bytes  = ~17 GB
+MLA (d_latent=512):  1 * 32 *  1 * 128k * 512 * 2 bytes  = ~4 GB</code></pre>
+<ul>
+<li><strong>MLA caches one vector per position per layer</strong> &mdash; no per-head duplication</li>
+<li><strong>Compression ratio</strong> = <code>d_model / d_latent</code>. With <code>d_latent = 512</code> and <code>d_model = 4096</code>: 8x compression</li>
+<li><strong>Concrete per-token cache</strong>: ~1.15 kB (MLA) vs. ~81.92 kB (MHA) &mdash; roughly 70x smaller, as reported in the DeepSeek-V2 paper for their 236B MoE model (21B active params, 128K context)</li>
+<li><strong>Trade-off</strong>: the up-projection adds FLOPs during attention, but memory is the bottleneck at inference</li>
+</ul>
+
+<h2 id="the-absorption-trick">The Absorption Trick<a hidden class="anchor" aria-hidden="true" href="#the-absorption-trick">#</a></h2>
+<p>DeepSeek V2/V3 absorb <code>W_up_K</code> into the query projection to avoid materializing K entirely during inference. The math:</p>
+<pre tabindex="0"><code>score = Q @ K.T = (X_q @ W_Q) @ (c @ W_up_K).T
+      = X_q @ W_Q @ W_up_K.T @ c.T
+      = X_q @ W_absorbed @ c.T</code></pre>
+<ul>
+<li><strong>W_absorbed</strong> = <code>W_Q @ W_up_K.T</code> &mdash; precomputed once</li>
+<li><strong>At inference</strong>: compute <code>Q_absorbed = X_q @ W_absorbed</code>, then dot with cached <code>c</code> directly</li>
+<li>Eliminates the K up-projection entirely during generation</li>
+</ul>
+<p>Note: absorption only works for the non-RoPE portion of the key. The positional part (<code>qk_rope_head_dim = 64</code>) bypasses the latent and carries RoPE separately &mdash; absorbing through RoPE would break its relative-position property.</p>
+<figure>
+    <img src="2.%20attn-variants/asset/absorb_mla.png" />
+</figure>
+
+<h2 id="gotchas-and-trade-offs-1">Gotchas and Trade-offs<a hidden class="anchor" aria-hidden="true" href="#gotchas-and-trade-offs-1">#</a></h2>
+<ul>
+<li><strong>Latent dimension is a hyperparameter</strong> &mdash; too small and you lose quality, too large and you lose the cache benefit</li>
+<li><strong>RoPE compatibility</strong>: positional encodings can&rsquo;t go through the bottleneck &mdash; RoPE&rsquo;s relative-position property would break the absorption trick. DeepSeek splits each key into a non-positional part (<code>qk_nope_head_dim = 128</code>, from the latent) and a small positional part (<code>qk_rope_head_dim = 64</code>) that carries RoPE separately</li>
+<li><strong>Extra compute at training time</strong> from the up/down projections &mdash; but inference memory is the bottleneck MLA targets</li>
+<li><strong>Not yet widely adopted</strong> outside DeepSeek &mdash; GQA remains the default elsewhere</li>
+</ul>
+
+<h2 id="example-architectures-1">Example Architectures<a hidden class="anchor" aria-hidden="true" href="#example-architectures-1">#</a></h2>
+<ul>
+<li><strong>DeepSeek V2</strong> &mdash; introduced MLA with <code>kv_lora_rank = 512</code> for a 236B MoE model</li>
+<li><strong>DeepSeek V3</strong> &mdash; refined MLA with decoupled RoPE, <code>kv_lora_rank = 512</code></li>
+</ul>
+
+<h2 id="implementation-from-scratch-1">Implementation from Scratch<a hidden class="anchor" aria-hidden="true" href="#implementation-from-scratch-1">#</a></h2>
+<pre tabindex="0"><code class="language-python">class MultiHeadLatentAttention(nn.Module):
+    def __init__(self, d_model: int, n_heads: int, d_latent: int):
+        super().__init__()
+        self.n_heads = n_heads
+        self.d_k = d_model // n_heads
+        self.W_q = nn.Linear(d_model, n_heads * self.d_k, bias=False)
+        self.W_down = nn.Linear(d_model, d_latent, bias=False)       # compress
+        self.W_up_k = nn.Linear(d_latent, n_heads * self.d_k, bias=False)  # decompress K
+        self.W_up_v = nn.Linear(d_latent, n_heads * self.d_k, bias=False)  # decompress V
+        self.W_o = nn.Linear(n_heads * self.d_k, d_model, bias=False)
+
+    def forward(self, x: torch.Tensor, mask=None):
+        &quot;&quot;&quot;Training path — explicit up-projection for K and V.
+        At inference, absorb W_up_K into W_Q (see Absorption Trick above)
+        to skip the K up-projection entirely.&quot;&quot;&quot;
+        B, T, _ = x.shape
+        Q = self.W_q(x).view(B, T, self.n_heads, self.d_k).transpose(1, 2)  # (B, n_heads, T, d_k)
+        c = self.W_down(x)          # (B, T, d_latent) — THIS gets cached
+        K = self.W_up_k(c).view(B, T, self.n_heads, self.d_k).transpose(1, 2)
+        V = self.W_up_v(c).view(B, T, self.n_heads, self.d_k).transpose(1, 2)
+        scores = torch.matmul(Q, K.transpose(-2, -1)) / math.sqrt(self.d_k)
+        if mask is not None:
+            scores = scores.masked_fill(mask, float(&quot;-inf&quot;))
+        weights = F.softmax(scores, dim=-1)
+        context = torch.matmul(weights, V)
+        context = context.transpose(1, 2).contiguous().view(B, T, -1)
+        return self.W_o(context), weights</code></pre>
+<p>Run the full implementation with cache comparison in the <a href="https://github.com/david-hoangt/llm_from_scratch/blob/main/attention/4.%20attention_variants.ipynb">attention variants notebook</a>.</p>
+
+<h2 id="key-takeaways-1">Key Takeaways<a hidden class="anchor" aria-hidden="true" href="#key-takeaways-1">#</a></h2>
+<p>MLA compresses K/V into a low-rank latent before caching &mdash; one small vector per position instead of per-head K and V tensors. Dramatically smaller KV cache at the cost of extra projection compute.</p>
+<p>GQA and MLA both shrink what gets cached. Neither touches how many tokens get attended to &mdash; and at 128K tokens, most of that long-range attention is noise. Empirically, local context dominates in the majority of layers.</p>
+
+<h1 id="sliding-window-attention-swa">Sliding Window Attention (SWA)<a hidden class="anchor" aria-hidden="true" href="#sliding-window-attention-swa">#</a></h1>
+<p>In a 128k-token document, does token 100,000 really need to attend to token 5? For most layers, local context dominates. The Longformer (Beltagy et al., <a href="https://arxiv.org/abs/2004.05150">2020</a>) first proved this for encoders, combining sliding windows with task-specific global tokens to set SOTA on WikiHop and TriviaQA. Three years later, Mistral 7B (Jiang et al., <a href="https://arxiv.org/abs/2310.06825">Oct 2023</a>) brought the idea to decoder-only LLMs &mdash; and <strong>outperformed LLaMA 2 13B across all benchmarks with 46% fewer parameters</strong>. SWA replaces the full <code>n x n</code> attention matrix with a band of width <code>w</code>.</p>
+<pre tabindex="0"><code>SWA: token i attends only to tokens max(0, i - w + 1) ... i</code></pre>
+<ul>
+<li><strong>w</strong> &mdash; window size (e.g., 4096)</li>
+<li><strong>Attention matrix</strong> &mdash; band-diagonal instead of full lower-triangle</li>
+<li><strong>Complexity</strong> &mdash; <code>O(n &times; w)</code> instead of <code>O(n&sup2;)</code> &mdash; linear in sequence length when <code>w</code> is fixed</li>
+</ul>
+<p>With <code>w = 3</code> on our 7-token sentence, &ldquo;Friday&rdquo; (position 6) attends to [&ldquo;earnings&rdquo;, &ldquo;on&rdquo;, &ldquo;Friday&rdquo;] &mdash; positions 4, 5, 6. It cannot see &ldquo;The&rdquo; or &ldquo;CEO&rdquo; directly. But stack two SWA layers and &ldquo;Friday&rdquo; reaches &ldquo;CEO&rdquo; transitively: layer 1 lets &ldquo;record&rdquo; (position 3) see &ldquo;CEO&rdquo; (position 1), and layer 2 lets &ldquo;Friday&rdquo; attend to &ldquo;record&rdquo;&rsquo;s updated representation.</p>
+<figure>
+    <img src="2.%20attn-variants/asset/swa.png" />
+    <figcaption>SWA drops long-range attention (red) &mdash; &lsquo;Friday&rsquo; sees only [&lsquo;earnings&rsquo;, &lsquo;on&rsquo;, &lsquo;Friday&rsquo;], not &lsquo;The&rsquo; or &lsquo;CEO&rsquo;.</figcaption>
+</figure>
+
+<h2 id="how-information-propagates">How Information Propagates<a hidden class="anchor" aria-hidden="true" href="#how-information-propagates">#</a></h2>
+<p>A single SWA layer has receptive field <code>w</code>. But stack <code>L</code> layers and the effective receptive field grows to <code>L * w</code>. With <code>w = 4096</code> and <code>L = 32</code>: effective range of 131,072 tokens &mdash; information hops across layers.</p>
+<pre tabindex="0"><code>Layer 1:  token i sees [i-w+1, ..., i]
+Layer 2:  token i sees [i-2w+1, ..., i]  (via layer 1's outputs)
+Layer L:  token i sees [i-Lw+1, ..., i]  (transitively)</code></pre>
+<p>This is the key insight: SWA doesn&rsquo;t limit the model to local context &mdash; it limits <em>per-layer</em> attention while allowing multi-hop propagation across layers.</p>
+<figure>
+    <img src="2.%20attn-variants/asset/swa_propagation.png" />
+    <figcaption>Each layer extends the receptive field by w positions &mdash; after 3 layers, &lsquo;Friday&rsquo; can see the entire sentence.</figcaption>
+</figure>
+
+<h2 id="the-hybrid-pattern-swa-global-layers">The Hybrid Pattern: SWA + Global Layers<a hidden class="anchor" aria-hidden="true" href="#the-hybrid-pattern-swa-global-layers">#</a></h2>
+<p>Pure SWA works for most layers, but some positions genuinely need global context. One solution: interleave SWA layers with occasional full-attention layers.</p>
+<pre tabindex="0"><code>Gemma 2 pattern:
+Layers 0-3:   SWA (w=4096)
+Layer 4:       Full causal attention
+Layers 5-8:   SWA (w=4096)
+Layer 9:       Full causal attention
+...</code></pre>
+<ul>
+<li><strong>SWA layers</strong> &mdash; fast, local context, <code>O(n &times; w)</code> per layer</li>
+<li><strong>Global layers</strong> &mdash; full <code>O(n&sup2;)</code> attention, but only every k-th layer</li>
+<li><strong>Overall cost</strong> &mdash; much less than all-global, much more expressive than all-SWA</li>
+</ul>
+<p>Mistral 7B uses pure SWA on all layers with <code>w = 4096</code> and a rolling buffer KV cache (<code>position mod w</code>), relying on multi-hop propagation for long-range context. This gives <strong>8x cache reduction</strong> for 32K sequences and <strong>2x speed</strong> on 16K sequences via modified FlashAttention. Gemma 2 takes the hybrid approach above, alternating SWA and global layers.</p>
+<pre tabindex="0"><code>Mistral 7B vs. LLaMA 2:
+MMLU:       60.1%  vs  44.4% (7B) / 55.6% (13B)
+HumanEval:  30.5%  vs  11.6% (7B) / 18.9% (13B)
+GSM8K:      52.2%  vs  16.0% (7B) / 34.3% (13B)</code></pre>
+
+<h2 id="gotchas-and-trade-offs-2">Gotchas and Trade-offs<a hidden class="anchor" aria-hidden="true" href="#gotchas-and-trade-offs-2">#</a></h2>
+<ul>
+<li><strong>Window size is a hyperparameter</strong> &mdash; too small and multi-hop propagation can&rsquo;t bridge distant dependencies; too large and you lose the efficiency benefit</li>
+<li><strong>KV cache is bounded</strong>: only <code>w</code> past entries per layer, not the full sequence &mdash; enables infinite-length generation with fixed memory</li>
+<li><strong>Not compatible with standard Flash Attention</strong> without modification &mdash; requires block-sparse or custom kernels</li>
+<li><strong>Attention sink still matters</strong>: the first token often falls outside the window for later positions, so some implementations pin it (SWA + sink token)</li>
+</ul>
+
+<h2 id="example-architectures-2">Example Architectures<a hidden class="anchor" aria-hidden="true" href="#example-architectures-2">#</a></h2>
+<ul>
+<li><strong>Mistral 7B</strong> &mdash; pure SWA with <code>w = 4096</code>, rolling buffer cache, all layers windowed</li>
+<li><strong>Gemma 2</strong> &mdash; alternating SWA and global attention layers</li>
+<li><strong>Qwen 2.5</strong> &mdash; SWA in selected layers</li>
+</ul>
+
+<h2 id="implementation-from-scratch-2">Implementation from Scratch<a hidden class="anchor" aria-hidden="true" href="#implementation-from-scratch-2">#</a></h2>
+<pre tabindex="0"><code class="language-python">class SlidingWindowAttention(nn.Module):
+    def __init__(self, d_model: int, n_heads: int, window_size: int):
+        super().__init__()
+        self.n_heads = n_heads
+        self.d_k = d_model // n_heads
+        self.window_size = window_size
+        self.W_q = nn.Linear(d_model, n_heads * self.d_k, bias=False)
+        self.W_k = nn.Linear(d_model, n_heads * self.d_k, bias=False)
+        self.W_v = nn.Linear(d_model, n_heads * self.d_k, bias=False)
+        self.W_o = nn.Linear(n_heads * self.d_k, d_model, bias=False)
+
+    def forward(self, x: torch.Tensor):
+        B, T, _ = x.shape
+        Q = self.W_q(x).view(B, T, self.n_heads, self.d_k).transpose(1, 2)
+        K = self.W_k(x).view(B, T, self.n_heads, self.d_k).transpose(1, 2)
+        V = self.W_v(x).view(B, T, self.n_heads, self.d_k).transpose(1, 2)
+        scores = torch.matmul(Q, K.transpose(-2, -1)) / math.sqrt(self.d_k)
+        # Causal + window mask: block future AND positions beyond w
+        causal = torch.triu(torch.ones(T, T, dtype=torch.bool), diagonal=1)
+        window = torch.tril(torch.ones(T, T, dtype=torch.bool), diagonal=-(self.window_size))
+        scores = scores.masked_fill(causal | window, float(&quot;-inf&quot;))
+        weights = F.softmax(scores, dim=-1)               # (B, n_heads, T, T)
+        context = torch.matmul(weights, V)
+        context = context.transpose(1, 2).contiguous().view(B, T, -1)
+        return self.W_o(context), weights</code></pre>
+<p>Run the full implementation with mask visualization in the <a href="https://github.com/david-hoangt/llm_from_scratch/blob/main/attention/4.%20attention_variants.ipynb">attention variants notebook</a>.</p>
+
+<h2 id="key-takeaways-2">Key Takeaways<a hidden class="anchor" aria-hidden="true" href="#key-takeaways-2">#</a></h2>
+<p>SWA replaces the full <code>n x n</code> attention matrix with a band of width <code>w</code> &mdash; <code>O(n &times; w)</code> per layer, linear when <code>w</code> is fixed. Information propagates globally through layer stacking. Bounded KV cache enables fixed-memory generation.</p>
+<p>The window is the same for every token, every layer, every input. &ldquo;Friday&rdquo; at position 100,000 gets the same 4,096-token neighborhood whether it needs to reference &ldquo;announced&rdquo; 50K tokens back or not. A fixed window can&rsquo;t distinguish &ldquo;this token needs long-range context&rdquo; from &ldquo;this token is fine with local.&rdquo;</p>
+
+<h1 id="native-sparse-attention-nsa">Native Sparse Attention (NSA)<a hidden class="anchor" aria-hidden="true" href="#native-sparse-attention-nsa">#</a></h1>
+<p>SWA uses a fixed window &mdash; every token gets the same local context regardless of content. But &ldquo;Friday&rdquo; at position 100,000 might need to reference &ldquo;announced&rdquo; 50k tokens back, while most tokens only need their neighbors. DeepSeek&rsquo;s Native Sparse Attention (Yuan, Gao, Dai et al., <a href="https://arxiv.org/abs/2502.11089">Feb 2025</a>) lets the model <em>learn</em> which tokens to attend to &mdash; sparse attention trained natively <strong>matches or exceeds full dense attention</strong> while delivering 6-11x speedups.</p>
+<pre tabindex="0"><code>NSA: three parallel attention paths combined
+  1. Compressed global — coarse summary of all tokens via block-mean pooling
+  2. Selected sparse — top-k most relevant tokens per query, chosen by a lightweight scorer
+  3. Sliding window — local context, same as SWA</code></pre>
+
+<h2 id="the-three-paths">The Three Paths<a hidden class="anchor" aria-hidden="true" href="#the-three-paths">#</a></h2>
+<p>Instead of one attention matrix, NSA runs three parallel attention paths and combines their outputs with a learned gate:</p>
+<pre tabindex="0"><code>output = g_cmp * Attn_compressed + g_sel * Attn_selected + g_swa * Attn_sliding</code></pre>
+<ul>
+<li><strong>Compressed global</strong> &mdash; pool every <code>b</code> tokens into one summary vector, attend to the <code>T/b</code> summaries. Cost: <code>O(n &times; n/b)</code>. Captures document-level context cheaply</li>
+<li><strong>Selected sparse</strong> &mdash; a lightweight &ldquo;scorer&rdquo; head picks the top-k most relevant blocks per query, then run full attention only on those blocks. Cost: <code>O(n &times; k)</code>. Captures precise long-range dependencies</li>
+<li><strong>Sliding window</strong> &mdash; standard SWA with window <code>w</code>. Cost: <code>O(n &times; w)</code>. Captures local syntax and semantics</li>
+</ul>
+<p>Picture our 7-token sentence repeated to fill a 4096-token document. When &ldquo;announced&rdquo; at position 3000 computes attention:</p>
+<ul>
+<li><strong>Compressed path</strong> &mdash; gives a coarse overview of the entire document</li>
+<li><strong>Selected path</strong> &mdash; scores blocks, finds the block containing &ldquo;CEO&rdquo; is highly relevant, pulls it in for full attention</li>
+<li><strong>Sliding window</strong> &mdash; handles local syntax around &ldquo;announced record earnings&rdquo;</li>
+</ul>
+<figure>
+    <img src="2.%20attn-variants/asset/nsa_paths.png" />
+    <figcaption>Three paths &mdash; coarse global, precise sparse, and local &mdash; combined by a learned gate per head.</figcaption>
+</figure>
+
+<h2 id="the-scorer-mechanism">The Scorer Mechanism<a hidden class="anchor" aria-hidden="true" href="#the-scorer-mechanism">#</a></h2>
+<p>The selected-sparse path is the most novel piece. How does it pick which tokens to attend to without computing full attention (which is what we&rsquo;re trying to avoid)?</p>
+<pre tabindex="0"><code>Block the sequence into chunks of size b
+Score each block: score_j = mean(Q_i @ K_block_j.T)    # cheap dot product with block mean
+Select top-k blocks by score
+Run full attention only on the selected k * b tokens</code></pre>
+<ul>
+<li><strong>Block scoring</strong> &mdash; average the keys within each block, dot with the query. Cost: <code>O(n &times; n/b)</code>, same as compressed path</li>
+<li><strong>Selection</strong> &mdash; <code>topk(scores, k)</code> per query position</li>
+<li><strong>Fine-grained attention</strong> &mdash; full dot-product on only the <code>k * b</code> selected tokens per query</li>
+</ul>
+<figure>
+    <img src="2.%20attn-variants/asset/nsa_scorer.png" />
+    <figcaption>Score cheaply with block means, then attend precisely to only the top-k selected blocks.</figcaption>
+</figure>
+<p>The paper&rsquo;s specific hyperparameters: compression block <code>l = 32</code> (stride 16), selection block <code>l' = 64</code>, top 16 selected blocks, sliding window <code>w = 512</code>. At 64k context, this delivers <strong>9x forward / 11.6x decoding speedup</strong> while slightly <em>improving</em> quality over full attention (0.456 vs. 0.443 general benchmarks avg, +0.032 on LongBench, +0.054 on AIME 2024 reasoning).</p>
+
+<h2 id="gotchas-and-trade-offs-3">Gotchas and Trade-offs<a hidden class="anchor" aria-hidden="true" href="#gotchas-and-trade-offs-3">#</a></h2>
+<ul>
+<li><strong>Block size <code>b</code> and top-k are hyperparameters</strong> &mdash; <code>l' = 64</code>, <code>k = 16</code> in the original paper</li>
+<li><strong>Scorer must run causally</strong> &mdash; can only score blocks that are in the past</li>
+<li><strong>Hardware-aware</strong>: NSA&rsquo;s block structure maps well to GPU block-sparse kernels, unlike arbitrary sparse patterns</li>
+<li><strong>Training-time overhead</strong>: three parallel paths + gating is more complex than standard attention; inference is where the wins show up</li>
+<li><strong>Total cost</strong>: <code>O(n &times; (n/b + k*b + w))</code> &mdash; subquadratic but not as simple as pure SWA</li>
+</ul>
+
+<h2 id="example-architectures-3">Example Architectures<a hidden class="anchor" aria-hidden="true" href="#example-architectures-3">#</a></h2>
+<ul>
+<li><strong>DeepSeek NSA paper</strong> &mdash; demonstrated on a 27B MoE model (3B active, GQA), trained on 270B tokens</li>
+</ul>
+
+<h2 id="implementation-from-scratch-3">Implementation from Scratch<a hidden class="anchor" aria-hidden="true" href="#implementation-from-scratch-3">#</a></h2>
+<pre tabindex="0"><code class="language-python">class NativeSparseAttention(nn.Module):
+    def __init__(self, d_model: int, n_heads: int, block_size: int = 8,
+                 top_k: int = 2, window_size: int = 16):
+        super().__init__()
+        self.n_heads = n_heads
+        self.d_k = d_model // n_heads
+        self.block_size = block_size
+        self.top_k = top_k
+        self.window_size = window_size
+        self.W_q = nn.Linear(d_model, n_heads * self.d_k, bias=False)
+        self.W_k = nn.Linear(d_model, n_heads * self.d_k, bias=False)
+        self.W_v = nn.Linear(d_model, n_heads * self.d_k, bias=False)
+        self.W_o = nn.Linear(n_heads * self.d_k, d_model, bias=False)
+        self.gate = nn.Linear(d_model, n_heads * 3, bias=False)
+
+    def _compressed_attention(self, Q, K, V):
+        B, H, T, D = K.shape
+        b = self.block_size
+        pad = (b - T % b) % b
+        if pad &gt; 0:
+            K, V = F.pad(K, (0,0,0,pad)), F.pad(V, (0,0,0,pad))
+        n_blocks = K.shape[2] // b
+        K_pool = K.view(B, H, n_blocks, b, D).mean(3)      # (B, H, n_blocks, d_k)
+        V_pool = V.view(B, H, n_blocks, b, D).mean(3)
+        scores = torch.matmul(Q, K_pool.transpose(-2, -1)) / math.sqrt(D)
+        return torch.matmul(F.softmax(scores, dim=-1), V_pool)  # (B, H, T, d_k)
+
+    def _selected_attention(self, Q, K, V):
+        B, H, T, D = K.shape
+        b = self.block_size
+        pad = (b - T % b) % b
+        if pad &gt; 0:
+            K, V = F.pad(K, (0,0,0,pad)), F.pad(V, (0,0,0,pad))
+        n_blocks = K.shape[2] // b
+        K_pool = K.view(B, H, n_blocks, b, D).mean(3)
+        block_scores = torch.matmul(Q, K_pool.transpose(-2, -1))  # (B, H, T, n_blocks)
+        k = min(self.top_k, n_blocks)
+        _, top_idx = block_scores.topk(k, dim=-1)                 # (B, H, T, k)
+        # Expand block indices to token indices
+        tok_idx = (top_idx.unsqueeze(-1) * b + torch.arange(b, device=K.device))
+        tok_idx = tok_idx.view(B, H, T, k * b).clamp(max=K.shape[2] - 1)
+        # Gather selected K/V and attend
+        tok_exp = tok_idx.unsqueeze(-1).expand(-1, -1, -1, -1, D)
+        K_exp = K.unsqueeze(2).expand(-1, -1, T, -1, -1)
+        V_exp = V.unsqueeze(2).expand(-1, -1, T, -1, -1)
+        K_sel = torch.gather(K_exp, 3, tok_exp)                   # (B, H, T, k*b, d_k)
+        V_sel = torch.gather(V_exp, 3, tok_exp)
+        scores = torch.matmul(Q.unsqueeze(3), K_sel.transpose(-2,-1)).squeeze(3) / math.sqrt(D)
+        return torch.matmul(F.softmax(scores, dim=-1).unsqueeze(3), V_sel).squeeze(3)
+
+    def _sliding_attention(self, Q, K, V):
+        T = Q.shape[2]
+        scores = torch.matmul(Q, K.transpose(-2, -1)) / math.sqrt(self.d_k)
+        causal = torch.triu(torch.ones(T, T, dtype=torch.bool, device=Q.device), diagonal=1)
+        window = torch.tril(torch.ones(T, T, dtype=torch.bool, device=Q.device),
+                            diagonal=-(self.window_size))
+        scores = scores.masked_fill(causal | window, float(&quot;-inf&quot;))
+        return torch.matmul(F.softmax(scores, dim=-1), V)
+
+    def forward(self, x: torch.Tensor):
+        B, T, _ = x.shape
+        Q = self.W_q(x).view(B, T, self.n_heads, self.d_k).transpose(1, 2)
+        K = self.W_k(x).view(B, T, self.n_heads, self.d_k).transpose(1, 2)
+        V = self.W_v(x).view(B, T, self.n_heads, self.d_k).transpose(1, 2)
+        a_cmp = self._compressed_attention(Q, K, V)   # (B, H, T, d_k)
+        a_sel = self._selected_attention(Q, K, V)
+        a_swa = self._sliding_attention(Q, K, V)
+        g = self.gate(x).view(B, T, self.n_heads, 3).permute(0,2,1,3)  # (B, H, T, 3)
+        g = torch.sigmoid(g)
+        context = g[...,0:1]*a_cmp + g[...,1:2]*a_sel + g[...,2:3]*a_swa
+        context = context.transpose(1, 2).contiguous().view(B, T, -1)
+        return self.W_o(context), g</code></pre>
+<p>The full implementation with all three path methods and gate analysis is in the <a href="https://github.com/david-hoangt/llm_from_scratch/blob/main/attention/4.%20attention_variants.ipynb">attention variants notebook</a>.</p>
+
+<h2 id="key-takeaways-3">Key Takeaways<a hidden class="anchor" aria-hidden="true" href="#key-takeaways-3">#</a></h2>
+<p>NSA combines coarse global context, precise sparse selection, and local windowed attention &mdash; three complementary views gated per-head. Subquadratic and content-aware, unlike fixed-pattern SWA.</p>
+<p>GQA, MLA, SWA, NSA &mdash; four different answers to &ldquo;which tokens should attend to which, and at what memory cost.&rdquo; But there&rsquo;s a dimension none of them address: even after computing the perfect attention weights, every position&rsquo;s output hits the residual stream at full strength. &ldquo;The&rdquo; at layer 20 rarely carries new information. Why update it as aggressively as &ldquo;announced&rdquo;?</p>
+
+<h1 id="gated-attention">Gated Attention<a hidden class="anchor" aria-hidden="true" href="#gated-attention">#</a></h1>
+<p>Standard attention adds every head&rsquo;s output to the residual stream with equal weight. But &ldquo;The&rdquo; at position 0 rarely carries new information after the first few layers &mdash; why update its representation at full strength? A learned gate suppresses uninformative outputs per-position.</p>
+<pre tabindex="0"><code>GatedAttn(X) = sigmoid(X @ W_g) * Attention(Q, K, V)</code></pre>
+<ul>
+<li><strong>W_g</strong> <code>[d_model, d_model]</code> &mdash; Learned gating projection</li>
+<li><strong>sigmoid(X @ W_g)</strong> <code>[batch, seq_len, d_model]</code> &mdash; Per-position, per-dimension gate in [0, 1]</li>
+<li><strong>Element-wise multiply</strong> &mdash; scales each dimension of the attention output before the residual connection</li>
+</ul>
+<p>In our running example, after a few layers &ldquo;The&rdquo; and &ldquo;on&rdquo; are well-established function words &mdash; their gate values drop to ~0.2. Content-rich positions like &ldquo;announced&rdquo; and &ldquo;earnings&rdquo; pass through at ~0.8. The model decides per-position, per-dimension which updates matter.</p>
+<figure>
+    <img src="2.%20attn-variants/asset/gated_attn.png" />
+    <figcaption>The sigmoid gate suppresses uninformative attention outputs before they hit the residual stream.</figcaption>
+</figure>
+
+<h2 id="qk-norm-stabilizing-the-scores">QK-Norm: Stabilizing the Scores<a hidden class="anchor" aria-hidden="true" href="#qk-norm-stabilizing-the-scores">#</a></h2>
+<p>Gated attention often pairs with QK-Norm &mdash; first proposed by Henry et al. (<em>&ldquo;Query-Key Normalization for Transformers&rdquo;</em>, <a href="https://arxiv.org/abs/2010.04245">EMNLP Findings 2020</a>) and proven essential at scale by Dehghani et al. (<em>&ldquo;Scaling Vision Transformers to 22B Parameters&rdquo;</em>, <a href="https://arxiv.org/abs/2302.05442">ICML 2023</a>). At 8B+ scale, attention logits exceed 50,000 in magnitude &mdash; near-one-hot weights that kill gradients. QK-Norm via LayerNorm enabled <strong>stable training across three orders of magnitude of learning rate variation</strong>.</p>
+<p>Apply RMSNorm to Q and K before the dot product:</p>
+<pre tabindex="0"><code>Q_norm = RMSNorm(Q)    K_norm = RMSNorm(K)
+scores = Q_norm @ K_norm.T / sqrt(d_k)</code></pre>
+<ul>
+<li><strong>Cost</strong>: two norm operations per attention computation &mdash; negligible</li>
+<li><strong>Effect</strong>: eliminates attention logit growth at large scale</li>
+</ul>
+<p>Output gating takes several forms: sigmoid gates (Qwen 3), SiLU gates, logit soft-capping (Gemma 2&rsquo;s <code>tanh</code>-based cap at 50.0). OLMo 2 (<em>&ldquo;2 OLMo 2 Furious&rdquo;</em>, AI2, <a href="https://arxiv.org/abs/2501.00656">Jan 2025</a>) pairs QK-Norm with reordered RMSNorm (post-norm), gaining <strong>+9 points MMLU</strong> over OLMo 1 and eliminating loss spikes.</p>
+
+<h2 id="gotchas-and-trade-offs-4">Gotchas and Trade-offs<a hidden class="anchor" aria-hidden="true" href="#gotchas-and-trade-offs-4">#</a></h2>
+<ul>
+<li><strong>Gate adds parameters</strong>: <code>d_model * d_model</code> per layer for W_g &mdash; ~0.3% overhead in a typical model</li>
+<li><strong>Sigmoid vs. SiLU</strong>: some implementations use <code>SiLU(X @ W_g)</code> instead of sigmoid, allowing the gate to amplify (values &gt; 1) &mdash; empirically similar</li>
+<li><strong>QK-Norm is almost free</strong> and increasingly standard even without gating</li>
+<li><strong>Initialization matters</strong>: initialize W_g so gates start near 1.0 (identity-like), then let the model learn to suppress</li>
+</ul>
+
+<h2 id="example-architectures-4">Example Architectures<a hidden class="anchor" aria-hidden="true" href="#example-architectures-4">#</a></h2>
+<ul>
+<li><strong>OLMo 2</strong> &mdash; QK-Norm + post-RMSNorm for training stability</li>
+<li><strong>Gemma 2</strong> &mdash; logit soft-capping (tanh-based, capped at 50.0) + alternating SWA/global layers</li>
+<li><strong>Qwen 3</strong> &mdash; QK-Norm with gated attention blocks</li>
+</ul>
+
+<h2 id="implementation-from-scratch-4">Implementation from Scratch<a hidden class="anchor" aria-hidden="true" href="#implementation-from-scratch-4">#</a></h2>
+<pre tabindex="0"><code class="language-python">class GatedAttention(nn.Module):
+    def __init__(self, d_model: int, n_heads: int, qk_norm: bool = True):
+        super().__init__()
+        self.n_heads = n_heads
+        self.d_k = d_model // n_heads
+        self.W_q = nn.Linear(d_model, n_heads * self.d_k, bias=False)
+        self.W_k = nn.Linear(d_model, n_heads * self.d_k, bias=False)
+        self.W_v = nn.Linear(d_model, n_heads * self.d_k, bias=False)
+        self.W_o = nn.Linear(n_heads * self.d_k, d_model, bias=False)
+        self.W_g = nn.Linear(d_model, d_model, bias=False)    # output gate
+        self.qk_norm = qk_norm
+        if qk_norm:
+            self.q_norm = nn.RMSNorm(self.d_k)
+            self.k_norm = nn.RMSNorm(self.d_k)
+
+    def forward(self, x: torch.Tensor, mask=None):
+        B, T, _ = x.shape
+        Q = self.W_q(x).view(B, T, self.n_heads, self.d_k).transpose(1, 2)
+        K = self.W_k(x).view(B, T, self.n_heads, self.d_k).transpose(1, 2)
+        V = self.W_v(x).view(B, T, self.n_heads, self.d_k).transpose(1, 2)
+        if self.qk_norm:
+            Q, K = self.q_norm(Q), self.k_norm(K)             # QK-Norm
+        scores = torch.matmul(Q, K.transpose(-2, -1)) / math.sqrt(self.d_k)
+        if mask is not None:
+            scores = scores.masked_fill(mask, float(&quot;-inf&quot;))
+        weights = F.softmax(scores, dim=-1)
+        context = torch.matmul(weights, V)
+        context = context.transpose(1, 2).contiguous().view(B, T, -1)
+        attn_out = self.W_o(context)
+        gate = torch.sigmoid(self.W_g(x))                     # (B, T, d_model)
+        return gate * attn_out, weights                        # element-wise suppress</code></pre>
+<p>Run with gate analysis and QK-Norm score comparison in the <a href="https://github.com/david-hoangt/llm_from_scratch/blob/main/attention/4.%20attention_variants.ipynb">attention variants notebook</a>.</p>
+
+<h2 id="key-takeaways-4">Key Takeaways<a hidden class="anchor" aria-hidden="true" href="#key-takeaways-4">#</a></h2>
+<p>A learned sigmoid gate on the attention output lets the model suppress uninformative updates per-position, per-dimension. QK-Norm stabilizes attention logits at scale. Both are cheap additions with measurable training stability gains.</p>
+<p>Gating and QK-Norm are surgical additions &mdash; a few extra parameters for meaningful stability gains. But step back and look at the compute budget: every layer still runs full quadratic attention. Most layers handle local syntax and short-range agreement &mdash; patterns that don&rsquo;t require global context. Three teams at Google, AI21, and Zyphra arrived at the same conclusion in early 2024.</p>
+
+<h1 id="hybrid-attention">Hybrid Attention<a hidden class="anchor" aria-hidden="true" href="#hybrid-attention">#</a></h1>
+<p>Most layers handle local patterns &mdash; syntax, agreement, short-range dependencies &mdash; that don&rsquo;t require global context. Three papers in early 2024 converged on the same insight: interleave cheap <code>O(n)</code> layers with expensive full-attention layers, and you get near-transformer quality at a fraction of the cost.</p>
+<pre tabindex="0"><code>Hybrid pattern (e.g., 3:1 ratio):
+Layers 0-2:   LinearAttention (O(n) per layer)
+Layer 3:       Full GatedAttention (O(n^2) per layer)
+Layers 4-6:   LinearAttention
+Layer 7:       Full GatedAttention
+...</code></pre>
+<figure>
+    <img src="2.%20attn-variants/asset/hybrid.png" />
+    <figcaption>Hybrid replaces most quadratic layers with O(n) linear layers &mdash; only every 4th layer pays the full cost.</figcaption>
+</figure>
+
+<h2 id="linear-attention-the-lightweight-block">Linear Attention: The Lightweight Block<a hidden class="anchor" aria-hidden="true" href="#linear-attention-the-lightweight-block">#</a></h2>
+<p>Griffin (De et al., Google DeepMind, <a href="https://arxiv.org/abs/2402.19427">Feb 2024</a>) uses gated linear recurrence; Jamba (Lieber et al., AI21, <a href="https://arxiv.org/abs/2403.19887">Mar 2024</a>) and Zamba (Glorioso et al., Zyphra, <a href="https://arxiv.org/abs/2405.16712">May 2024</a>) use Mamba SSM blocks. The cheap layers avoid the <code>n x n</code> attention matrix entirely. Here&rsquo;s the simplest version &mdash; linear attention via the associativity trick:</p>
+<pre tabindex="0"><code>LinearAttention: O = (Q @ K.T) @ V  →  O = Q @ (K.T @ V)</code></pre>
+<ul>
+<li><strong>Standard attention</strong>: <code>(Q @ K.T)</code> is <code>[seq_len, seq_len]</code> &mdash; <code>O(n&sup2; &times; d)</code></li>
+<li><strong>Linear attention</strong>: <code>(K.T @ V)</code> is <code>[d_k, d_v]</code> &mdash; <code>O(n &times; d&sup2;)</code>, linear in sequence length</li>
+<li><strong>Trade-off</strong>: no softmax, so no proper probability distribution. Attention weights aren&rsquo;t normalized per-query. Works for local patterns, not precise long-range selection</li>
+</ul>
+<p>The associativity trick is the key: <code>(Q @ K.T) @ V = Q @ (K.T @ V)</code>. Compute the <code>d_k &times; d_v</code> inner product first, then multiply by each query &mdash; never materialize the <code>n &times; n</code> matrix.</p>
+<ul>
+<li><strong>At 7 tokens</strong> (<code>d_k = 16</code>): standard builds 7&times;7 = 49 entries; linear builds 16&times;16 = 256 &mdash; <em>worse</em></li>
+<li><strong>At 4096 tokens</strong>: standard needs ~16.8M entries per head; linear stays at 256 &mdash; the crossover pays off when <code>n &gt;&gt; d_k</code></li>
+</ul>
+<figure>
+    <img src="2.%20attn-variants/asset/linear_attn.png" />
+    <figcaption>Linear attention avoids the n &times; n matrix by computing K.T @ V first &mdash; O(n &times; d&sup2;) instead of O(n&sup2; &times; d).</figcaption>
+</figure>
+
+<h2 id="the-interleaving-strategy">The Interleaving Strategy<a hidden class="anchor" aria-hidden="true" href="#the-interleaving-strategy">#</a></h2>
+<p>The ratio of linear-to-full layers controls the compute/quality trade-off:</p>
+<pre tabindex="0"><code>Ratio 3:1 (12 layers total):  9 linear + 3 full attention
+Ratio 5:1 (12 layers total):  10 linear + 2 full attention
+Ratio 1:1 (12 layers total):  6 linear + 6 full attention (conservative)</code></pre>
+<ul>
+<li><strong>Higher ratio</strong> &mdash; faster, lower memory, but depends more on multi-hop propagation through linear layers for global context</li>
+<li><strong>Lower ratio</strong> &mdash; closer to standard transformer quality, less inference speedup</li>
+<li><strong>Placement matters</strong>: early and late layers benefit most from full attention; middle layers are often fine with linear</li>
+</ul>
+<p>The 2024 results are striking:</p>
+<ul>
+<li><strong>Griffin</strong> (2:1 recurrence-to-attention) &mdash; matched LLaMA 2 quality on <strong>6x fewer tokens</strong> (300B vs. 2T), significantly higher throughput</li>
+<li><strong>Jamba</strong> (7:1 Mamba-to-attention, 52B / 12B active) &mdash; <strong>4 GB KV cache at 256K context vs. 128 GB extrapolated for LLaMA 2</strong> (LLaMA 2 natively supports 4K; 128 GB is the theoretical cache at 256K), HellaSwag 87.1 vs. Mixtral 86.7</li>
+<li><strong>Zamba</strong> (~6:1, shared attention block reused across 80 layers) &mdash; MMLU 57.72 vs. LLaMA 2 7B&rsquo;s 45.88, trained on half the tokens</li>
+</ul>
+<p>The winning ratios cluster around <strong>6-7 linear/recurrent layers per 1 attention layer</strong>.</p>
+
+<h2 id="gotchas-and-trade-offs-5">Gotchas and Trade-offs<a hidden class="anchor" aria-hidden="true" href="#gotchas-and-trade-offs-5">#</a></h2>
+<ul>
+<li><strong>Linear attention quality degrades on tasks requiring precise long-range retrieval</strong> &mdash; the model can&rsquo;t do exact key-value lookup without the softmax normalization</li>
+<li><strong>Ratio is architecture-dependent</strong> &mdash; what works for 7B doesn&rsquo;t necessarily transfer to 70B</li>
+<li><strong>Training instability</strong>: linear attention layers can diverge without careful normalization. Common fix: apply RMSNorm after linear attention output</li>
+<li><strong>Not a drop-in replacement</strong>: can&rsquo;t just swap layers in a pretrained model; must train from scratch with the hybrid pattern</li>
+</ul>
+
+<h2 id="example-architectures-5">Example Architectures<a hidden class="anchor" aria-hidden="true" href="#example-architectures-5">#</a></h2>
+<ul>
+<li><strong>Griffin / RecurrentGemma</strong> (Google DeepMind) &mdash; gated linear recurrence + local attention, 2:1 ratio</li>
+<li><strong>Jamba</strong> (AI21) &mdash; Mamba + MHA interleaved, 7:1 ratio, 256K context</li>
+<li><strong>Zamba</strong> (Zyphra) &mdash; Mamba + shared attention block, ~6:1 ratio</li>
+</ul>
+
+<h2 id="implementation-from-scratch-5">Implementation from Scratch<a hidden class="anchor" aria-hidden="true" href="#implementation-from-scratch-5">#</a></h2>
+<pre tabindex="0"><code class="language-python">class LinearAttention(nn.Module):
+    &quot;&quot;&quot;O(n * d^2) via associativity: Q @ (K.T @ V) instead of (Q @ K.T) @ V.&quot;&quot;&quot;
+    def __init__(self, d_model: int, n_heads: int):
+        super().__init__()
+        self.n_heads = n_heads
+        self.d_k = d_model // n_heads
+        self.W_q = nn.Linear(d_model, n_heads * self.d_k, bias=False)
+        self.W_k = nn.Linear(d_model, n_heads * self.d_k, bias=False)
+        self.W_v = nn.Linear(d_model, n_heads * self.d_k, bias=False)
+        self.W_o = nn.Linear(n_heads * self.d_k, d_model, bias=False)
+        self.norm = nn.RMSNorm(d_model)
+
+    def forward(self, x: torch.Tensor) -&gt; torch.Tensor:
+        B, T, _ = x.shape
+        Q = self.W_q(x).view(B, T, self.n_heads, self.d_k).transpose(1, 2)
+        K = self.W_k(x).view(B, T, self.n_heads, self.d_k).transpose(1, 2)
+        V = self.W_v(x).view(B, T, self.n_heads, self.d_k).transpose(1, 2)
+        Q, K = F.elu(Q) + 1, F.elu(K) + 1        # non-negative feature map
+        KV = torch.matmul(K.transpose(-2, -1), V)  # (B, H, d_k, d_k) — the small matrix
+        context = torch.matmul(Q, KV)               # (B, H, T, d_k) — no n×n matrix!
+        context = context.transpose(1, 2).contiguous().view(B, T, -1)
+        return self.norm(self.W_o(context))
+
+class HybridAttentionBlock(nn.Module):
+    &quot;&quot;&quot;Interleave linear and full attention layers by ratio.&quot;&quot;&quot;
+    def __init__(self, d_model: int, n_heads: int, n_layers: int, ratio: int = 3):
+        super().__init__()
+        layers, self.layer_types = [], []
+        for i in range(n_layers):
+            if (i + 1) % (ratio + 1) == 0:
+                layers.append(GatedAttention(d_model, n_heads, qk_norm=True))
+                self.layer_types.append(&quot;full&quot;)
+            else:
+                layers.append(LinearAttention(d_model, n_heads))
+                self.layer_types.append(&quot;linear&quot;)
+        self.layers = nn.ModuleList(layers)
+
+    def forward(self, x: torch.Tensor) -&gt; torch.Tensor:
+        for layer, ltype in zip(self.layers, self.layer_types):
+            if ltype == &quot;full&quot;:
+                out, _ = layer(x)   # GatedAttention returns (out, weights)
+            else:
+                out = layer(x)       # LinearAttention returns out only
+            x = x + out              # residual connection
+        return x</code></pre>
+<p>Run with layer layout visualization and parameter comparison in the <a href="https://github.com/david-hoangt/llm_from_scratch/blob/main/attention/4.%20attention_variants.ipynb">attention variants notebook</a>.</p>
+
+<h2 id="key-takeaways-5">Key Takeaways<a hidden class="anchor" aria-hidden="true" href="#key-takeaways-5">#</a></h2>
+<p>Hybrid attention interleaves cheap <code>O(n)</code> linear layers with expensive <code>O(n&sup2;)</code> full-attention layers &mdash; allocating quadratic compute only where global context is needed. The ratio is the key hyperparameter.</p>
+
+<h1 id="putting-it-all-together">Putting It All Together<a hidden class="anchor" aria-hidden="true" href="#putting-it-all-together">#</a></h1>
+<p>No production model uses just one variant. Look at how they compose:</p>
+<pre tabindex="0"><code>DeepSeek V3:  MLA (KV compression) + MoE + causal mask
+LLaMA 3:     GQA (shared KV heads) + full causal attention
+Mistral 7B:  GQA + SWA (all layers, rolling buffer cache)
+OLMo 2:      Gated attention + QK-Norm + full causal
+Jamba:        MHA + linear attention (hybrid 7:1 ratio)</code></pre>
+<p>GQA for cache reduction, SWA for local layers, gating for output control, full attention where global context is critical. The equation is always <code>softmax(Q @ K.T / sqrt(d_k)) @ V</code> &mdash; only the wiring, masks, and compression change.</p>
+<figure>
+    <img src="2.%20attn-variants/asset/together.png" />
+    <figcaption>Start from the bottleneck, not the mechanism. Most models combine 2-3 variants.</figcaption>
+</figure>
+<p>Same shapes, same scaling, same softmax. Only the wiring changes.</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="../../tags/transformer/">Transformer</a></li>
+      <li><a href="../../tags/attention/">Attention</a></li>
+      <li><a href="../../tags/deep-learning/">Deep-Learning</a></li>
+      <li><a href="../../tags/long-read/">Long-Read</a></li>
+    </ul>
+
+<nav class="paginav">
+  <a class="prev" href="../../posts/2026-03-30-self-attn/">
+    <span class="title">&laquo; </span>
+    <br>
+    <span>The Mechanics of Attention: Self, Multi-Head, Causal, and Cross</span>
+  </a>
+</nav>
+
+
+<div class="share-buttons">
+    <a target="_blank" rel="noopener noreferrer" aria-label="share Attention Variants: From Self-Attention to GQA, MLA, SWA, and Beyond on twitter"
+        href="https://twitter.com/intent/tweet/?text=Attention%20Variants%3a%20From%20Self-Attention%20to%20GQA%2c%20MLA%2c%20SWA%2c%20and%20Beyond&amp;url=https%3a%2f%2fdavid-hoangt.github.io%2fposts%2f2026-04-09-attn-variant%2f&amp;hashtags=transformer%2cattention%2cdeep-learning%2clong-read">
+        <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve">
+            <path
+                d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-386.892,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Zm-253.927,424.544c135.939,0 210.268,-112.643 210.268,-210.268c0,-3.218 0,-6.437 -0.153,-9.502c14.406,-10.421 26.973,-23.448 36.935,-38.314c-13.18,5.824 -27.433,9.809 -42.452,11.648c15.326,-9.196 26.973,-23.602 32.49,-40.92c-14.252,8.429 -30.038,14.56 -46.896,17.931c-13.487,-14.406 -32.644,-23.295 -53.946,-23.295c-40.767,0 -73.87,33.104 -73.87,73.87c0,5.824 0.613,11.494 1.992,16.858c-61.456,-3.065 -115.862,-32.49 -152.337,-77.241c-6.284,10.881 -9.962,23.601 -9.962,37.088c0,25.594 13.027,48.276 32.95,61.456c-12.107,-0.307 -23.448,-3.678 -33.41,-9.196l0,0.92c0,35.862 25.441,65.594 59.311,72.49c-6.13,1.686 -12.72,2.606 -19.464,2.606c-4.751,0 -9.348,-0.46 -13.946,-1.38c9.349,29.426 36.628,50.728 68.965,51.341c-25.287,19.771 -57.164,31.571 -91.8,31.571c-5.977,0 -11.801,-0.306 -17.625,-1.073c32.337,21.15 71.264,33.41 112.95,33.41Z" />
+        </svg>
+    </a>
+    <a target="_blank" rel="noopener noreferrer" aria-label="share Attention Variants: From Self-Attention to GQA, MLA, SWA, and Beyond on linkedin"
+        href="https://www.linkedin.com/shareArticle?mini=true&amp;url=https%3a%2f%2fdavid-hoangt.github.io%2fposts%2f2026-04-09-attn-variant%2f&amp;title=Attention%20Variants%3a%20From%20Self-Attention%20to%20GQA%2c%20MLA%2c%20SWA%2c%20and%20Beyond&amp;summary=Attention%20Variants%3a%20From%20Self-Attention%20to%20GQA%2c%20MLA%2c%20SWA%2c%20and%20Beyond&amp;source=https%3a%2f%2fdavid-hoangt.github.io%2fposts%2f2026-04-09-attn-variant%2f">
+        <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve">
+            <path
+                d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-386.892,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Zm-288.985,423.278l0,-225.717l-75.04,0l0,225.717l75.04,0Zm270.539,0l0,-129.439c0,-69.333 -37.018,-101.586 -86.381,-101.586c-39.804,0 -57.634,21.891 -67.617,37.266l0,-31.958l-75.021,0c0.995,21.181 0,225.717 0,225.717l75.02,0l0,-126.056c0,-6.748 0.486,-13.492 2.474,-18.315c5.414,-13.475 17.767,-27.434 38.494,-27.434c27.135,0 38.007,20.707 38.007,51.037l0,120.768l75.024,0Zm-307.552,-334.556c-25.674,0 -42.448,16.879 -42.448,39.002c0,21.658 16.264,39.002 41.455,39.002l0.484,0c26.165,0 42.452,-17.344 42.452,-39.002c-0.485,-22.092 -16.241,-38.954 -41.943,-39.002Z" />
+        </svg>
+    </a>
+    <a target="_blank" rel="noopener noreferrer" aria-label="share Attention Variants: From Self-Attention to GQA, MLA, SWA, and Beyond on reddit"
+        href="https://reddit.com/submit?url=https%3a%2f%2fdavid-hoangt.github.io%2fposts%2f2026-04-09-attn-variant%2f&title=Attention%20Variants%3a%20From%20Self-Attention%20to%20GQA%2c%20MLA%2c%20SWA%2c%20and%20Beyond">
+        <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve">
+            <path
+                d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-386.892,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Zm-3.446,265.638c0,-22.964 -18.616,-41.58 -41.58,-41.58c-11.211,0 -21.361,4.457 -28.841,11.666c-28.424,-20.508 -67.586,-33.757 -111.204,-35.278l18.941,-89.121l61.884,13.157c0.756,15.734 13.642,28.29 29.56,28.29c16.407,0 29.706,-13.299 29.706,-29.701c0,-16.403 -13.299,-29.702 -29.706,-29.702c-11.666,0 -21.657,6.792 -26.515,16.578l-69.105,-14.69c-1.922,-0.418 -3.939,-0.042 -5.585,1.036c-1.658,1.073 -2.811,2.761 -3.224,4.686l-21.152,99.438c-44.258,1.228 -84.046,14.494 -112.837,35.232c-7.468,-7.164 -17.589,-11.591 -28.757,-11.591c-22.965,0 -41.585,18.616 -41.585,41.58c0,16.896 10.095,31.41 24.568,37.918c-0.639,4.135 -0.99,8.328 -0.99,12.576c0,63.977 74.469,115.836 166.33,115.836c91.861,0 166.334,-51.859 166.334,-115.836c0,-4.218 -0.347,-8.387 -0.977,-12.493c14.564,-6.47 24.735,-21.034 24.735,-38.001Zm-119.474,108.193c-20.27,20.241 -59.115,21.816 -70.534,21.816c-11.428,0 -50.277,-1.575 -70.522,-21.82c-3.007,-3.008 -3.007,-7.882 0,-10.889c3.003,-2.999 7.882,-3.003 10.885,0c12.777,12.781 40.11,17.317 59.637,17.317c19.522,0 46.86,-4.536 59.657,-17.321c3.016,-2.999 7.886,-2.995 10.885,0.008c3.008,3.011 3.003,7.882 -0.008,10.889Zm-5.23,-48.781c-16.373,0 -29.701,-13.324 -29.701,-29.698c0,-16.381 13.328,-29.714 29.701,-29.714c16.378,0 29.706,13.333 29.706,29.714c0,16.374 -13.328,29.698 -29.706,29.698Zm-160.386,-29.702c0,-16.381 13.328,-29.71 29.714,-29.71c16.369,0 29.689,13.329 29.689,29.71c0,16.373 -13.32,29.693 -29.689,29.693c-16.386,0 -29.714,-13.32 -29.714,-29.693Z" />
+        </svg>
+    </a>
+    <a target="_blank" rel="noopener noreferrer" aria-label="share Attention Variants: From Self-Attention to GQA, MLA, SWA, and Beyond on facebook"
+        href="https://facebook.com/sharer/sharer.php?u=https%3a%2f%2fdavid-hoangt.github.io%2fposts%2f2026-04-09-attn-variant%2f">
+        <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve">
+            <path
+                d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-106.468,0l0,-192.915l66.6,0l12.672,-82.621l-79.272,0l0,-53.617c0,-22.603 11.073,-44.636 46.58,-44.636l36.042,0l0,-70.34c0,0 -32.71,-5.582 -63.982,-5.582c-65.288,0 -107.96,39.569 -107.96,111.204l0,62.971l-72.573,0l0,82.621l72.573,0l0,192.915l-191.104,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Z" />
+        </svg>
+    </a>
+    <a target="_blank" rel="noopener noreferrer" aria-label="share Attention Variants: From Self-Attention to GQA, MLA, SWA, and Beyond on whatsapp"
+        href="https://api.whatsapp.com/send?text=Attention%20Variants%3a%20From%20Self-Attention%20to%20GQA%2c%20MLA%2c%20SWA%2c%20and%20Beyond%20-%20https%3a%2f%2fdavid-hoangt.github.io%2fposts%2f2026-04-09-attn-variant%2f">
+        <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve">
+            <path
+                d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-386.892,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Zm-58.673,127.703c-33.842,-33.881 -78.847,-52.548 -126.798,-52.568c-98.799,0 -179.21,80.405 -179.249,179.234c-0.013,31.593 8.241,62.428 23.927,89.612l-25.429,92.884l95.021,-24.925c26.181,14.28 55.659,21.807 85.658,21.816l0.074,0c98.789,0 179.206,-80.413 179.247,-179.243c0.018,-47.895 -18.61,-92.93 -52.451,-126.81Zm-126.797,275.782l-0.06,0c-26.734,-0.01 -52.954,-7.193 -75.828,-20.767l-5.441,-3.229l-56.386,14.792l15.05,-54.977l-3.542,-5.637c-14.913,-23.72 -22.791,-51.136 -22.779,-79.287c0.033,-82.142 66.867,-148.971 149.046,-148.971c39.793,0.014 77.199,15.531 105.329,43.692c28.128,28.16 43.609,65.592 43.594,105.4c-0.034,82.149 -66.866,148.983 -148.983,148.984Zm81.721,-111.581c-4.479,-2.242 -26.499,-13.075 -30.604,-14.571c-4.105,-1.495 -7.091,-2.241 -10.077,2.241c-2.986,4.483 -11.569,14.572 -14.182,17.562c-2.612,2.988 -5.225,3.364 -9.703,1.12c-4.479,-2.241 -18.91,-6.97 -36.017,-22.23c-13.314,-11.876 -22.304,-26.542 -24.916,-31.026c-2.612,-4.484 -0.279,-6.908 1.963,-9.14c2.016,-2.007 4.48,-5.232 6.719,-7.847c2.24,-2.615 2.986,-4.484 4.479,-7.472c1.493,-2.99 0.747,-5.604 -0.374,-7.846c-1.119,-2.241 -10.077,-24.288 -13.809,-33.256c-3.635,-8.733 -7.327,-7.55 -10.077,-7.688c-2.609,-0.13 -5.598,-0.158 -8.583,-0.158c-2.986,0 -7.839,1.121 -11.944,5.604c-4.105,4.484 -15.675,15.32 -15.675,37.364c0,22.046 16.048,43.342 18.287,46.332c2.24,2.99 31.582,48.227 76.511,67.627c10.685,4.615 19.028,7.371 25.533,9.434c10.728,3.41 20.492,2.929 28.209,1.775c8.605,-1.285 26.499,-10.833 30.231,-21.295c3.732,-10.464 3.732,-19.431 2.612,-21.298c-1.119,-1.869 -4.105,-2.99 -8.583,-5.232Z" />
+        </svg>
+    </a>
+    <a target="_blank" rel="noopener noreferrer" aria-label="share Attention Variants: From Self-Attention to GQA, MLA, SWA, and Beyond on telegram"
+        href="https://telegram.me/share/url?text=Attention%20Variants%3a%20From%20Self-Attention%20to%20GQA%2c%20MLA%2c%20SWA%2c%20and%20Beyond&amp;url=https%3a%2f%2fdavid-hoangt.github.io%2fposts%2f2026-04-09-attn-variant%2f">
+        <svg version="1.1" xml:space="preserve" viewBox="2 2 28 28">
+            <path
+                d="M26.49,29.86H5.5a3.37,3.37,0,0,1-2.47-1,3.35,3.35,0,0,1-1-2.47V5.48A3.36,3.36,0,0,1,3,3,3.37,3.37,0,0,1,5.5,2h21A3.38,3.38,0,0,1,29,3a3.36,3.36,0,0,1,1,2.46V26.37a3.35,3.35,0,0,1-1,2.47A3.38,3.38,0,0,1,26.49,29.86Zm-5.38-6.71a.79.79,0,0,0,.85-.66L24.73,9.24a.55.55,0,0,0-.18-.46.62.62,0,0,0-.41-.17q-.08,0-16.53,6.11a.59.59,0,0,0-.41.59.57.57,0,0,0,.43.52l4,1.24,1.61,4.83a.62.62,0,0,0,.63.43.56.56,0,0,0,.4-.17L16.54,20l4.09,3A.9.9,0,0,0,21.11,23.15ZM13.8,20.71l-1.21-4q8.72-5.55,8.78-5.55c.15,0,.23,0,.23.16a.18.18,0,0,1,0,.06s-2.51,2.3-7.52,6.8Z" />
+        </svg>
+    </a>
+</div>
+
+  </footer>
+</article>
+    </main>
+
+<footer class="footer">
+    <span>&copy; 2026 <a href="../../">David&#39;s Whiteboard</a></span>
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &amp;
+        <a href="https://git.io/hugopapermod" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+<script>
+    document.querySelectorAll('pre > code').forEach((codeblock) => {
+        const container = codeblock.parentNode.parentNode;
+
+        const copybutton = document.createElement('button');
+        copybutton.classList.add('copy-code');
+        copybutton.innerText = 'copy';
+
+        function copyingDone() {
+            copybutton.innerText = 'copied!';
+            setTimeout(() => {
+                copybutton.innerText = 'copy';
+            }, 2000);
+        }
+
+        copybutton.addEventListener('click', (cb) => {
+            if ('clipboard' in navigator) {
+                navigator.clipboard.writeText(codeblock.textContent);
+                copyingDone();
+                return;
+            }
+
+            const range = document.createRange();
+            range.selectNodeContents(codeblock);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+            try {
+                document.execCommand('copy');
+                copyingDone();
+            } catch (e) { };
+            selection.removeRange(range);
+        });
+
+        if (container.classList.contains("highlight")) {
+            container.appendChild(copybutton);
+        } else if (container.parentNode.firstChild == container) {
+
+        } else if (codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.nodeName == "TABLE") {
+
+            codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.appendChild(copybutton);
+        } else {
+
+            codeblock.parentNode.appendChild(copybutton);
+        }
+    });
+</script>
+</body>
+</html>

@@ -1,5 +1,14 @@
 [
   {
+    "slug": "2026-04-09-attn-variant",
+    "title": "Attention Variants: From Self-Attention to GQA, MLA, SWA, and Beyond",
+    "date": "2026-04-09",
+    "summary": "Building every major attention mechanism from scratch in PyTorch — GQA, MLA, SWA, NSA, Gated Attention, and Hybrid Attention. Six efficiency variants that solve the bottlenecks of standard attention: KV cache memory, quadratic cost, and training instability at scale.",
+    "tags": ["transformer", "attention", "deep-learning", "long-read"],
+    "readingTime": "45 min",
+    "author": "David Hoang"
+  },
+  {
     "slug": "2026-03-30-self-attn",
     "title": "Self-Attention and Multi-Head Attention",
     "date": "2026-03-30",
