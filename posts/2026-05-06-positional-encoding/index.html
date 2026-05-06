@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>Positional Encoding: How Transformers Learn Where Tokens Sit | David&#39;s Whiteboard</title>
+<meta name="keywords" content="transformer, attention, positional-encoding, deep-learning, long-read" />
+<meta name="description" content="From sinusoids to RoPE to NoPE — how transformers know where each token sits. Building Absolute PE, Sinusoidal, Learned, Relative PE, ALiBi, RoPE, p-RoPE, and NoPE from scratch in PyTorch.">
+<meta name="author" content="David Hoang">
+<link rel="canonical" href="../../posts/2026-05-06-positional-encoding/" />
+<link crossorigin="anonymous" href="../../assets/css/stylesheet.min.51b2420ff5ea1215cdf584af7ba59d5fea94201c33f25109d6448c7271631316.css" integrity="sha256-UbJCD/XqEhXN9YSve6WdX&#43;qUIBwz8lEJ1kSMcnFjExY=" rel="preload stylesheet" as="style">
+<script defer crossorigin="anonymous" src="../../assets/js/highlight.min.2eadbb982468c11a433a3e291f01326f2ba43f065e256bf792dbd79640a92316.js" integrity="sha256-Lq27mCRowRpDOj4pHwEybyukPwZeJWv3ktvXlkCpIxY="
+    onload="hljs.initHighlightingOnLoad();"></script>
+<link rel="icon" href="../../favicon_coffee.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="../../favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="../../favicon-32x32.png">
+<link rel="apple-touch-icon" href="../../apple-touch-icon.png">
+<link rel="mask-icon" href="../../safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="../../posts/2026-05-06-positional-encoding/" />
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --hljs-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+      <script async src="https://www.googletagmanager.com/gtag/js?id=G-HFT45VFBX6"></script>
+      <script>
+        var doNotTrack = false;
+        if ( false ) {
+          var dnt = (navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack);
+          var doNotTrack = (dnt == "1" || dnt == "yes");
+        }
+        if (!doNotTrack) {
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-HFT45VFBX6');
+        }
+      </script><meta property="og:title" content="Positional Encoding: How Transformers Learn Where Tokens Sit" />
+<meta property="og:description" content="From sinusoids to RoPE to NoPE — how transformers know where each token sits. Building Absolute PE, Sinusoidal, Learned, Relative PE, ALiBi, RoPE, p-RoPE, and NoPE from scratch in PyTorch." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="../../posts/2026-05-06-positional-encoding/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2026-05-06T00:00:00&#43;00:00" />
+<meta property="article:modified_time" content="2026-05-06T00:00:00&#43;00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Positional Encoding: How Transformers Learn Where Tokens Sit"/>
+<meta name="twitter:description" content="From sinusoids to RoPE to NoPE — how transformers know where each token sits. Building Absolute, Sinusoidal, Learned, Relative, ALiBi, RoPE, p-RoPE, and NoPE from scratch in PyTorch."/>
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "Posts",
+      "item": "../../posts/"
+    },
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "Positional Encoding: How Transformers Learn Where Tokens Sit",
+      "item": "../../posts/2026-05-06-positional-encoding/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Positional Encoding: How Transformers Learn Where Tokens Sit",
+  "name": "Positional Encoding: How Transformers Learn Where Tokens Sit",
+  "description": "From sinusoids to RoPE to NoPE — how transformers know where each token sits. Building Absolute, Sinusoidal, Learned, Relative, ALiBi, RoPE, p-RoPE, and NoPE from scratch in PyTorch.",
+  "keywords": [
+    "transformer", "attention", "positional-encoding", "deep-learning", "long-read"
+  ],
+  "articleBody": "Without positional encoding, self-attention is permutation-equivariant. Every PE scheme injects position information somewhere in the transformer. Absolute PE adds a position vector to each token embedding before projection. Relative PE / ALiBi adds a position-dependent bias to attention scores. RoPE rotates Q and K vectors after projection so the dot product encodes relative position. p-RoPE rotates only a fraction of dimensions. NoPE skips explicit injection and relies on the causal mask. Built from scratch in PyTorch with full implementations.",
+  "wordCount" : "5800",
+  "inLanguage": "en",
+  "datePublished": "2026-05-06T00:00:00Z",
+  "dateModified": "2026-05-06T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "David Hoang"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "../../posts/2026-05-06-positional-encoding/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "David's Log",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "../../favicon_coffee.ico"
+    }
+  }
+}
+</script>
+<style>.logo{left:230px!important}
+.header{position:sticky;top:0;z-index:999;background:var(--theme,#fff)}
+.post-single>.toc{display:none}
+.sidebar-toc{position:fixed;top:0;bottom:0;left:0;display:flex;align-items:center;z-index:100;pointer-events:none}
+.sidebar-toc-mini{pointer-events:auto;display:flex;flex-direction:column;gap:14px;padding:10px 8px 10px 12px;max-height:calc(100vh - 60px);overflow-y:auto;cursor:pointer;scrollbar-width:none}
+.sidebar-toc-mini::-webkit-scrollbar{display:none}
+.sidebar-toc-mini-item{display:block;width:18px;height:2px;padding:0;border:none;background:var(--secondary);opacity:.45;border-radius:1px;flex-shrink:0;cursor:pointer;transition:width .15s,opacity .15s,background .15s}
+.sidebar-toc-mini-item.h2{width:12px;margin-left:4px;opacity:.3}
+.sidebar-toc-mini:hover .sidebar-toc-mini-item{opacity:.75}
+.sidebar-toc-mini-item.active{background:var(--primary);opacity:1;width:22px}
+.sidebar-toc-mini-item.h2.active{width:16px}
+.sidebar-toc-panel{position:absolute;top:50%;left:100%;margin-left:6px;width:min(320px,calc(100vw - 56px));max-height:calc(100vh - 60px);overflow-y:auto;padding:16px 18px;background:var(--entry);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.18);opacity:0;visibility:hidden;pointer-events:none;transform:translate(-8px,-50%);transition:opacity .18s,visibility .18s,transform .18s;font-size:14px;line-height:1.5}
+.sidebar-toc.open .sidebar-toc-panel{opacity:1;visibility:visible;pointer-events:auto;transform:translate(0,-50%)}
+.sidebar-toc-title{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--secondary);margin:0 0 12px}
+.sidebar-toc-panel ul{list-style:none;padding:0;margin:0}
+.sidebar-toc-panel li{margin:0;padding:0}
+.sidebar-toc-panel ul ul{margin-left:10px;padding-left:8px;border-left:1px solid var(--border)}
+.sidebar-toc-panel a{display:block;padding:5px 8px;color:var(--secondary);border-radius:4px;transition:color .15s,background .15s}
+.sidebar-toc-panel a:hover{color:var(--primary);background:var(--code-bg);box-shadow:none}
+.sidebar-toc-panel a.active{color:var(--primary);font-weight:600;background:var(--code-bg)}
+.sidebar-toc-panel::-webkit-scrollbar{width:4px}
+.sidebar-toc-panel::-webkit-scrollbar-thumb{background:var(--tertiary);border-radius:2px;border:none}</style>
+<script defer src="../../assets/js/sidebar-toc.js"></script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    }
+
+</script>
+
+<script>
+  MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$','$$'], ['\\[', '\\]']],
+      processEscapes: true,
+      processEnvironments: true
+    },
+    options: {
+      skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+    }
+  };
+
+  window.addEventListener('load', (event) => {
+      document.querySelectorAll("mjx-container").forEach(function(x){
+        x.parentElement.classList += 'has-jax'})
+    });
+
+</script>
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script type="text/javascript" id="MathJax-script" async
+  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="../../" accesskey="h" title="David&#39;s Whiteboard (Alt + H)">David&#39;s Whiteboard</a>
+            <span class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+                <ul class="lang-switch"><li>|</li>
+                </ul>
+            </span>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="../../" title="Posts">
+                    <span>Posts</span>
+                </a>
+            </li>
+            <li>
+                <a href="../../archives" title="Archive">
+                    <span>Archive</span>
+                </a>
+            </li>
+            <li>
+                <a href="../../search/" title="Search (Alt &#43; /)" accesskey=/>
+                    <span>Search</span>
+                </a>
+            </li>
+            <li>
+                <a href="../../tags/" title="Tags">
+                    <span>Tags</span>
+                </a>
+            </li>
+
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+
+    <h1 class="post-title">
+      Positional Encoding: How Transformers Learn Where Tokens Sit
+    </h1>
+    <div class="post-meta">Date: May 6, 2026  |  Estimated Reading Time: 30 min  |  Author: David Hoang
+
+</div>
+  </header> <div class="toc">
+    <details >
+        <summary accesskey="c" title="(Alt + C)">
+            <span class="details">Table of Contents</span>
+        </summary>
+
+        <div class="inner"><ul>
+                <li>
+                    <a href="#introduction" aria-label="Introduction">Introduction</a>
+                </li>
+                <li>
+                    <a href="#absolute-positional-encoding" aria-label="Absolute Positional Encoding">Absolute Positional Encoding</a><ul>
+
+                <li>
+                    <a href="#sinusoidal-encoding" aria-label="Sinusoidal Encoding (Vaswani et al., 2017)">Sinusoidal Encoding (Vaswani et al., 2017)</a></li>
+                <li>
+                    <a href="#learned-positional-embeddings" aria-label="Learned Positional Embeddings">Learned Positional Embeddings</a></li>
+                <li>
+                    <a href="#absolute-gotchas" aria-label="Gotchas and Trade-offs">Gotchas and Trade-offs</a></li>
+                <li>
+                    <a href="#absolute-key-takeaway" aria-label="Key Takeaway">Key Takeaway</a></li></ul>
+                </li>
+                <li>
+                    <a href="#relative-positional-encoding" aria-label="Relative Positional Encoding">Relative Positional Encoding</a><ul>
+
+                <li>
+                    <a href="#the-clipping-mechanism" aria-label="The Clipping Mechanism">The Clipping Mechanism</a></li>
+                <li>
+                    <a href="#same-family-different-engineering" aria-label="Same Family, Different Engineering">Same Family, Different Engineering</a></li>
+                <li>
+                    <a href="#relative-gotchas" aria-label="Gotchas and Trade-offs">Gotchas and Trade-offs</a></li>
+                <li>
+                    <a href="#relative-key-takeaway" aria-label="Key Takeaway">Key Takeaway</a></li></ul>
+                </li>
+                <li>
+                    <a href="#alibi" aria-label="Attention with Linear Biases (ALiBi)">Attention with Linear Biases (ALiBi)</a><ul>
+
+                <li>
+                    <a href="#the-bias-matrix" aria-label="The Bias Matrix">The Bias Matrix</a></li>
+                <li>
+                    <a href="#multi-head-slopes" aria-label="Multi-Head Slopes">Multi-Head Slopes</a></li>
+                <li>
+                    <a href="#train-short-test-long" aria-label="Train Short, Test Long">Train Short, Test Long</a></li>
+                <li>
+                    <a href="#alibi-gotchas" aria-label="Gotchas and Trade-offs">Gotchas and Trade-offs</a></li>
+                <li>
+                    <a href="#alibi-architectures" aria-label="Example Architectures">Example Architectures</a></li>
+                <li>
+                    <a href="#alibi-key-takeaway" aria-label="Key Takeaway">Key Takeaway</a></li></ul>
+                </li>
+                <li>
+                    <a href="#rope" aria-label="Rotary Positional Encoding (RoPE)">Rotary Positional Encoding (RoPE)</a><ul>
+
+                <li>
+                    <a href="#the-rotation-mechanism" aria-label="The Rotation Mechanism">The Rotation Mechanism</a></li>
+                <li>
+                    <a href="#why-the-dot-product-encodes-relative-position" aria-label="Why the Dot Product Encodes Relative Position">Why the Dot Product Encodes Relative Position</a></li>
+                <li>
+                    <a href="#the-two-bands" aria-label="The Two Bands: Position vs. Semantics">The Two Bands: Position vs. Semantics</a></li>
+                <li>
+                    <a href="#context-length-extension" aria-label="Context Length Extension">Context Length Extension</a></li>
+                <li>
+                    <a href="#rope-gotchas" aria-label="Gotchas and Trade-offs">Gotchas and Trade-offs</a></li>
+                <li>
+                    <a href="#rope-architectures" aria-label="Example Architectures">Example Architectures</a></li>
+                <li>
+                    <a href="#rope-key-takeaway" aria-label="Key Takeaway">Key Takeaway</a></li></ul>
+                </li>
+                <li>
+                    <a href="#p-rope" aria-label="Bonus: p-RoPE (Gemma 4)">Bonus: p-RoPE (Gemma 4)</a>
+                </li>
+                <li>
+                    <a href="#nope" aria-label="NoPE and Hybrid Positional Layers">NoPE and Hybrid Positional Layers</a><ul>
+
+                <li>
+                    <a href="#why-it-works" aria-label="Why It Works: The Causal Mask Provides a Position Cue">Why It Works: The Causal Mask Provides a Position Cue</a></li>
+                <li>
+                    <a href="#why-plain-nope-does-not-work-for-encoders" aria-label="Why Plain NoPE Does Not Work for Encoders">Why Plain NoPE Does Not Work for Encoders</a></li>
+                <li>
+                    <a href="#the-hybrid-rope-nope" aria-label="The Hybrid: RoPE + NoPE">The Hybrid: RoPE + NoPE</a></li>
+                <li>
+                    <a href="#nope-gotchas" aria-label="Gotchas and Trade-offs">Gotchas and Trade-offs</a></li>
+                <li>
+                    <a href="#nope-key-takeaway" aria-label="Key Takeaway">Key Takeaway</a></li></ul>
+                </li>
+                <li>
+                    <a href="#which-pe-should-you-use" aria-label="Which PE Should You Use?">Which PE Should You Use?</a>
+                </li>
+                <li>
+                    <a href="#references" aria-label="References">References</a>
+                </li>
+            </ul>
+        </div>
+    </details>
+</div>
+
+  <div class="post-content"><p><em>From sinusoids to RoPE to NoPE</em></p>
+
+<h1 id="introduction">Introduction<a hidden class="anchor" aria-hidden="true" href="#introduction">#</a></h1>
+<p>The previous attention (<a href="../2026-03-30-self-attn/">Self-Attention and Multi-Head Attention</a>, <a href="../2026-04-09-attn-variant/">Attention Variants</a>) posts focused on <em>which</em> tokens attend to which other tokens: Q/K scores, causal masks, multi-head attention, and efficient variants. This post covers the missing axis: how does the model know <em>where</em> each token sits?</p>
+<p>We&rsquo;ll use one running example throughout: <em>&ldquo;The CEO announced record earnings on Friday&rdquo;</em> (7 tokens, zero-indexed from <code>The = 0</code> to <code>Friday = 6</code>). Code examples use <code>d_model = 64</code> with <code>n_heads = 4</code>, giving <code>d_k = d_model / n_heads = 16</code>.</p>
+<p>Without positional encoding, &ldquo;CEO&rdquo; at position 1 and another &ldquo;CEO&rdquo; at position 5 would produce identical Q, K, V vectors before context is mixed in. Self-attention treats them as the same token unless something else marks their positions. The model cannot distinguish <em>&ldquo;The CEO announced&rdquo;</em> from <em>&ldquo;announced CEO The&rdquo;</em>. Without positional encoding or an asymmetric mask, self-attention is permutation-equivariant: shuffle the input and the output shuffles to match.</p>
+<p>Every PE scheme solves this by injecting position information somewhere in the transformer. The approaches evolved as each generation hit a wall the previous one couldn&rsquo;t scale past, but they all differ mainly in <em>where</em> that signal enters the computation.</p>
+<p>Explicit PE schemes inject position at one of three points in the attention pipeline; NoPE skips explicit injection:</p>
+<ul>
+<li><strong>Absolute PE</strong>: at the input, adds a position vector to each token embedding before projection</li>
+<li><strong>RoPE</strong>: at the vectors, rotates Q and K after projection, before the dot product</li>
+<li><strong>Relative PE / ALiBi</strong>: at the scores, adds a position-dependent bias after the dot product, before softmax</li>
+<li><strong>NoPE</strong>: no explicit injection, relies on the causal mask in decoder-only models</li>
+</ul>
+<p><strong>Note:</strong> All implementations in this post are available as runnable notebooks at <a href="https://github.com/david-hoangt/llm_from_scratch/tree/main/src/positional_encoding">github.com/david-hoangt/llm_from_scratch</a>.</p>
+
+<h1 id="absolute-positional-encoding">Absolute Positional Encoding<a hidden class="anchor" aria-hidden="true" href="#absolute-positional-encoding">#</a></h1>
+<p>Each of our 7 tokens <em>&ldquo;The CEO announced record earnings on Friday&rdquo;</em> has a 64-dim embedding (<code>d_model = 64</code>). If &ldquo;announced&rdquo; appeared again at position 5, the embedding table alone would not know which occurrence was which. How do you stamp each position with a unique signature that the model can learn from?</p>
+<p>The simplest answer is to add a position-dependent vector directly to the token embedding before it enters the transformer.</p>
+<figure>
+    <img src="3.%20positional_encoding/asset/eq_01_absolute.png" alt="Equation: x_i equals token_embedding_i plus PE(i) — the position-aware input is the sum of the token embedding and a position-dependent vector" />
+</figure>
+<ul>
+<li><strong>token_embedding_i</strong>: the token&rsquo;s learned embedding</li>
+<li><strong>PE(i)</strong>: a vector unique to position <code>i</code></li>
+<li><strong>x_i</strong>: the position-aware input to the transformer</li>
+</ul>
+<p>There are two common ways to build that <code>PE(i)</code> vector: compute it from a fixed <strong>sinusoidal</strong> formula, or learn it as a trainable embedding table.</p>
+
+<h2 id="sinusoidal-encoding">Sinusoidal Encoding (Vaswani et al., 2017)<a hidden class="anchor" aria-hidden="true" href="#sinusoidal-encoding">#</a></h2>
+<p>The original Transformer used deterministic sine and cosine functions at different frequencies to generate position vectors, no learned parameters needed.</p>
+<figure>
+    <img src="3.%20positional_encoding/asset/eq_02_sinusoidal.png" alt="Equations: PE(pos, 2k) = sin(pos / 10000^(2k / d_model)) and PE(pos, 2k+1) = cos(pos / 10000^(2k / d_model))" />
+</figure>
+<ul>
+<li><strong>pos</strong>: token position in the sequence (0, 1, 2, &hellip;)</li>
+<li><strong>k</strong>: dimension-pair index, from <code>0</code> (fastest pair) to <code>d_model/2 - 1</code> (slowest pair)</li>
+<li><strong>2k, 2k+1</strong>: even/odd dimensions within each pair, sharing the same frequency</li>
+<li><strong>10000</strong>: base controlling how spread out the frequencies are</li>
+</ul>
+<p>For our 7-token sentence with <code>d_model = 64</code>, this produces a <code>[7, 64]</code> matrix where each row is a unique position fingerprint. &ldquo;The&rdquo; at position 0 gets <code>PE(0)</code>, &ldquo;CEO&rdquo; gets <code>PE(1)</code>, and so on.</p>
+<figure>
+    <img src="3.%20positional_encoding/asset/sinusoidal_pe_animation.gif" alt="Animation: sinusoidal PE for T = 128, d_model = 64. Fast dimensions cycle every few tokens; slow dimensions barely move, carrying coarse position over long contexts." style="width: 100%; max-width: 900px;" />
+<figcaption>Animation: sinusoidal PE for <code>T = 128</code>, <code>d_model = 64</code>. Fast dimensions cycle every few tokens; slow dimensions barely move, carrying coarse position over long contexts.</figcaption>
+</figure>
+<ul>
+<li><strong>Each position gets a unique vector</strong>: no two rows are identical</li>
+<li><strong>Nearby positions have similar vectors</strong>: <code>PE(2)</code> and <code>PE(3)</code> differ only slightly, giving the model a smooth notion of &ldquo;closeness&rdquo;</li>
+<li><strong>The wavelength spectrum spans from <code>2&pi;</code> up toward <code>10000 * 2&pi;</code></strong>: dimension 0 completes a full cycle every ~6 positions, dimension 63 barely moves across the entire sequence</li>
+</ul>
+<figure>
+    <img src="3.%20positional_encoding/asset/sinusoidal_pe.png" alt="Sinusoidal positional encoding heatmap" />
+</figure>
+<figure>
+    <img src="3.%20positional_encoding/asset/base_wavelength.png" alt="Wavelength spectrum across dimension pairs" />
+</figure>
+<figure>
+    <img src="3.%20positional_encoding/asset/distance_monotonicity.png" alt="Distance monotonicity property of sinusoidal PE" />
+</figure>
+<p><strong>Why sinusoids?</strong> Vaswani et al. chose them because a fixed offset is representable by a linear transform: for each sine/cosine pair, <code>PE(pos + k)</code> is just <code>PE(pos)</code> rotated by an angle determined by <code>k</code>. In principle, this lets the model learn relative patterns like &ldquo;3 positions to the left.&rdquo;</p>
+
+<h2 id="learned-positional-embeddings">Learned Positional Embeddings<a hidden class="anchor" aria-hidden="true" href="#learned-positional-embeddings">#</a></h2>
+<p>GPT-2 and BERT replaced sinusoids with a learned embedding table, <code>nn.Embedding(max_len, d_model)</code>. Each position gets a trainable vector, just like each token gets a trainable embedding.</p>
+<pre tabindex="0"><code>PE = nn.Embedding(max_len, d_model)
+x = token_embeddings + PE(positions)    # positions = [0, 1, 2, ..., T-1]</code></pre>
+<ul>
+<li><strong>PE.weight</strong> <code>[max_len, d_model]</code>: learned position vectors</li>
+<li><strong>max_len</strong>: hard ceiling on sequence length (512 for BERT, 1024 for GPT-2)</li>
+</ul>
+<pre tabindex="0"><code class="language-python">class SinusoidalPE(nn.Module):
+    &quot;&quot;&quot;
+    PE(pos, 2k)   = sin(pos / 10000^(2k / d_model))
+    PE(pos, 2k+1) = cos(pos / 10000^(2k / d_model))
+    &quot;&quot;&quot;
+
+    def __init__(self, d_model: int, max_len: int = 5000, dropout: float = 0.1):
+        super().__init__()
+        self.dropout = nn.Dropout(p=dropout)
+
+        pe = torch.zeros(max_len, d_model)                       # [max_len, d_model]
+        position = torch.arange(0, max_len).unsqueeze(1).float() # [max_len, 1]
+        div_term = torch.exp(
+            torch.arange(0, d_model, 2).float() * -(math.log(10000.0) / d_model)
+        )                                                         # [d_model/2]
+
+        pe[:, 0::2] = torch.sin(position * div_term)  # even dims
+        pe[:, 1::2] = torch.cos(position * div_term)  # odd dims
+        pe = pe.unsqueeze(0)                           # [1, max_len, d_model]
+        self.register_buffer(&quot;pe&quot;, pe)
+
+    def forward(self, x: torch.Tensor) -&gt; torch.Tensor:
+        &quot;&quot;&quot;x: [batch, seq_len, d_model] → same shape, position added.&quot;&quot;&quot;
+        x = x + self.pe[:, :x.size(1)]  # [batch, seq_len, d_model]
+        return self.dropout(x)
+
+
+class LearnedPE(nn.Module):
+    &quot;&quot;&quot;Each position gets a trainable d_model-dimensional vector.&quot;&quot;&quot;
+
+    def __init__(self, d_model: int, max_len: int = 512, dropout: float = 0.1):
+        super().__init__()
+        self.embedding = nn.Embedding(max_len, d_model)  # [max_len, d_model]
+        self.dropout = nn.Dropout(p=dropout)
+
+    def forward(self, x: torch.Tensor) -&gt; torch.Tensor:
+        T = x.size(1)
+        positions = torch.arange(T, device=x.device)   # [seq_len]
+        pe = self.embedding(positions)                   # [seq_len, d_model]
+        return self.dropout(x + pe)</code></pre>
+
+<h2 id="absolute-gotchas">Gotchas and Trade-offs<a hidden class="anchor" aria-hidden="true" href="#absolute-gotchas">#</a></h2>
+<ul>
+<li><strong>Length extrapolation is not guaranteed</strong>: sinusoidal PE <em>can</em> extrapolate past <code>max_len</code> in theory, but in practice attention patterns degrade. Learned PE cannot extrapolate at all, position 1025 has no embedding if <code>max_len = 1024</code></li>
+<li><strong>Relative distance is implicit</strong>: <code>PE(2)</code> tells the model &ldquo;I am at position 2&rdquo;, but doesn&rsquo;t directly encode &ldquo;I am 3 positions before position 5&rdquo;. The model must <em>learn</em> to compute relative distance from absolute coordinates</li>
+<li><strong>Content gets mixed with absolute coordinates</strong>: &ldquo;CEO&rdquo; at position 1 and &ldquo;CEO&rdquo; at position 4 get different representations even when the local context is identical. The model spends capacity encoding &ldquo;where am I&rdquo; instead of &ldquo;who is near me&rdquo;</li>
+</ul>
+
+<h2 id="absolute-key-takeaway">Key Takeaway<a hidden class="anchor" aria-hidden="true" href="#absolute-key-takeaway">#</a></h2>
+<p>Absolute PE stamps each position with a unique vector, solving the permutation problem but creating a new one: the model knows <em>where</em> each token is, but not directly <em>how far apart</em> any two tokens are. &ldquo;CEO&rdquo; knows it sits at position 1; computing that &ldquo;announced&rdquo; is 1 step to the right requires learning a function from absolute coordinates.</p>
+
+<h1 id="relative-positional-encoding">Relative Positional Encoding<a hidden class="anchor" aria-hidden="true" href="#relative-positional-encoding">#</a></h1>
+<p>If &ldquo;CEO announced&rdquo; appears at positions 1-2 in one sentence and at 50-51 in another, the model should recognize the same relationship without relearning it from new absolute coordinates. Shaw et al. introduced this approach in <em>&ldquo;Self-Attention with Relative Position Representations&rdquo;</em> (NAACL 2018): instead of adding position to the <em>input</em>, add it to the <em>attention scores</em>.</p>
+<figure>
+    <img src="3.%20positional_encoding/asset/eq_03_relative.png" alt="Equation: score(i, j) = q_i · k_j + q_i · a^K_{j-i}. The attention score combines the standard content-based dot product with an additional term that depends on the signed relative offset between query position i and key position j" />
+</figure>
+<ul>
+<li><strong>q_i @ k_j</strong>: the standard content-based attention score</li>
+<li><strong>a^K_{j-i}</strong> <code>[d_k]</code>: learned embedding indexed by clipped signed offset <code>clip(j - i, -K, K)</code>. Superscript <code>K</code> indicates key-side; Shaw also defined a value-side <code>a^V</code> used when aggregating values, dropped here for simplicity</li>
+<li><strong>K</strong>: maximum relative offset magnitude (positions beyond <code>K</code> are clipped to the boundary)</li>
+</ul>
+<p>The key shift: <code>a^K_{j-i}</code> depends only on <code>j - i</code> (signed offset), not on <code>i</code> or <code>j</code> individually.</p>
+
+<h2 id="the-clipping-mechanism">The Clipping Mechanism<a hidden class="anchor" aria-hidden="true" href="#the-clipping-mechanism">#</a></h2>
+<p>Shaw et al. clipped relative positions to a range <code>[-K, K]</code>, arguing that precise relative offset beyond a certain magnitude doesn&rsquo;t matter much; &ldquo;10 tokens to the left&rdquo; and &ldquo;15 tokens to the left&rdquo; carry roughly the same signal.</p>
+<figure>
+    <img src="3.%20positional_encoding/asset/rel_pe_clip.png" alt="7×7 relative position matrix for the running example tokens with clipping K=2. Diagonal cells = 0. Cells above diagonal show positive signed offsets clipped to +2. Cells below diagonal show negative signed offsets clipped to -2. Most off-diagonal values saturate at ±2, demonstrating that only 5 unique embeddings (-2, -1, 0, +1, +2) are needed regardless of sequence length" />
+</figure>
+<ul>
+<li><strong>Diagonal = 0</strong>: each token&rsquo;s offset to itself</li>
+<li><strong>Values clipped to [-2, 2]</strong>: only <code>2K + 1 = 5</code> unique embeddings needed</li>
+<li><strong>&ldquo;announced&rdquo; attending to &ldquo;CEO&rdquo;</strong> looks up <code>a^K_{-1}</code> (j &minus; i = 1 &minus; 2 = &minus;1, &ldquo;1 step to my left&rdquo;), regardless of absolute position</li>
+</ul>
+
+<h2 id="same-family-different-engineering">Same Family, Different Engineering<a hidden class="anchor" aria-hidden="true" href="#same-family-different-engineering">#</a></h2>
+<p>Shaw et al. was the first to bring relative position into transformer self-attention, but others refined the idea with different trade-offs:</p>
+<ul>
+<li><strong>Transformer-XL</strong> (Dai et al., ACL 2019): decomposed the attention score into four terms: content &times; content, content &times; position, plus two global biases (a global content bias <code>u</code> and a global position bias <code>v</code>). More expressive, but more parameters (<code>u</code>, <code>v</code>, <code>W_K_R</code> per head)</li>
+<li><strong>T5</strong> (Raffel et al., 2020): collapsed everything to a single learned scalar bias per relative-position bucket, with <strong>log-spaced</strong> buckets (nearby offsets get finer buckets; far offsets share coarser buckets). Fewer parameters, same core idea</li>
+</ul>
+<p>All three inject relative position into the attention logits rather than the input. The implementation below follows Shaw et al., the simplest of the three.</p>
+<pre tabindex="0"><code class="language-python">class RelativePositionAttention(nn.Module):
+    &quot;&quot;&quot;
+    score(i, j) = q_i @ k_j + q_i @ a_{clip(j-i, -K, K)}
+
+    Args:
+        d_model:      Input embedding dimension.
+        n_heads:      Number of attention heads.
+        max_rel_dist: Maximum relative offset magnitude K (positions clipped to [-K, K]).
+    &quot;&quot;&quot;
+
+    def __init__(self, d_model: int, n_heads: int, max_rel_dist: int = 16):
+        super().__init__()
+        self.n_heads = n_heads
+        self.d_k = d_model // n_heads
+        self.max_rel_dist = max_rel_dist
+
+        self.W_q = nn.Linear(d_model, d_model, bias=False)
+        self.W_k = nn.Linear(d_model, d_model, bias=False)
+        self.W_v = nn.Linear(d_model, d_model, bias=False)
+        self.W_o = nn.Linear(d_model, d_model, bias=False)
+
+        # 2K+1 learned embeddings, one per clipped signed offset
+        self.rel_embed = nn.Embedding(2 * max_rel_dist + 1, self.d_k)  # [2K+1, d_k]
+
+    def forward(self, x: torch.Tensor, mask=None) -&gt; tuple[torch.Tensor, torch.Tensor]:
+        B, T, _ = x.shape
+        Q = self.W_q(x).view(B, T, self.n_heads, self.d_k).transpose(1, 2)  # [B, h, T, d_k]
+        K = self.W_k(x).view(B, T, self.n_heads, self.d_k).transpose(1, 2)
+        V = self.W_v(x).view(B, T, self.n_heads, self.d_k).transpose(1, 2)
+
+        content_scores = torch.matmul(Q, K.transpose(-2, -1))     # [B, h, T, T]
+
+        # Relative position score term
+        rel_indices = self._relative_indices(T, x.device)          # [T, T]
+        rel_embeds = self.rel_embed(rel_indices)                   # [T, T, d_k]
+        rel_scores = torch.einsum(&quot;bhid,ijd-&gt;bhij&quot;, Q, rel_embeds)  # [B, h, T, T]
+
+        scores = (content_scores + rel_scores) / math.sqrt(self.d_k)
+        if mask is not None:
+            scores = scores.masked_fill(mask.unsqueeze(0).unsqueeze(0), float(&quot;-inf&quot;))
+        weights = F.softmax(scores, dim=-1)                        # [B, h, T, T]
+        context = torch.matmul(weights, V)                          # [B, h, T, d_k]
+        context = context.transpose(1, 2).contiguous().view(B, T, -1)
+        return self.W_o(context), weights
+
+    def _relative_indices(self, T: int, device) -&gt; torch.Tensor:
+        &quot;&quot;&quot;[T, T] matrix of clipped relative positions shifted to [0, 2K].&quot;&quot;&quot;
+        positions = torch.arange(T, device=device)
+        rel = positions.unsqueeze(0) - positions.unsqueeze(1)      # j - i
+        rel = rel.clamp(-self.max_rel_dist, self.max_rel_dist)
+        return rel + self.max_rel_dist  # shift for embedding lookup</code></pre>
+
+<h2 id="relative-gotchas">Gotchas and Trade-offs<a hidden class="anchor" aria-hidden="true" href="#relative-gotchas">#</a></h2>
+<ul>
+<li><strong>Translation-invariant position term</strong>: the relative positional contribution for &ldquo;CEO announced&rdquo; is the same whether it appears at positions 1-2 or 50-51</li>
+<li><strong>Complexity overhead</strong>: Shaw-style relative PE adds a query-dependent <code>[T, T]</code> relative score term, plus extra tensor ops for the position embeddings. Materializing this at 128K tokens is a 16B-entry score grid per head</li>
+<li><strong>Family variants differ in parameter count</strong>: Shaw et al. uses learned <code>[d_k]</code> <em>vector</em> embeddings per relative offset (key-side, optionally per-head; the implementation above shares them across heads as a common simplification). Transformer-XL adds <code>u</code>, <code>v</code>, and <code>W_K_R</code>. T5 collapses everything to a single learned <em>scalar</em> bias per relative-position bucket</li>
+<li><strong>Stock fast attention kernels don&rsquo;t help</strong>: arbitrary learned <code>[T, T]</code> biases break the tiling strategy that makes FlashAttention fast. Specialized kernels exist for structured biases (ALiBi has one in FlashAttention v2.4+), but a general learned relative bias still requires custom kernel work</li>
+</ul>
+
+<h2 id="relative-key-takeaway">Key Takeaway<a hidden class="anchor" aria-hidden="true" href="#relative-key-takeaway">#</a></h2>
+<p>Relative PE shifts position information from the input embeddings into the attention score itself, encoding <em>signed relative offset</em> rather than absolute identity. The model gets a direct positional term for &ldquo;CEO is 1 step left of announced&rdquo; instead of recovering that relation from two absolute stamps.</p>
+<p>The trade-off is engineering: learned relative score terms are flexible, but they add extra <code>[T, T]</code> structure to attention. ALiBi keeps the same score-side idea but removes the learned table entirely: distance becomes a fixed linear penalty.</p>
+
+<h1 id="alibi">Attention with Linear Biases (ALiBi)<a hidden class="anchor" aria-hidden="true" href="#alibi">#</a></h1>
+<p>ALiBi is the simplest score-side relative position scheme: no learned distance embeddings, no buckets, no sinusoids. Press, Smith, and Lewis proposed it in <em>&ldquo;Train Short, Test Long&rdquo;</em> (ICLR 2022): subtract a fixed linear penalty from attention scores, proportional to query-key distance. Each head gets one scalar slope.</p>
+<figure>
+    <img src="3.%20positional_encoding/asset/eq_04_alibi.png" alt="Equation: ALiBi_score(i, j) = q_i · k_j − m · |i − j|. The standard content-based score has a fixed linear penalty subtracted from it, where m is a head-specific slope and |i − j| is the absolute distance between query and key positions" />
+</figure>
+<ul>
+<li><strong>q_i @ k_j</strong>: standard content-based attention score</li>
+<li><strong>m</strong>: head-specific slope (fixed, not learned)</li>
+<li><strong>|i - j|</strong>: absolute distance between query position <code>i</code> and key position <code>j</code></li>
+<li>The positional bias is always non-positive, so farther tokens get a lower positional contribution</li>
+<li>In decoder-only attention, future positions are masked; for valid keys <code>j &lt;= i</code>, <code>|i - j| = i - j</code></li>
+</ul>
+
+<h2 id="the-bias-matrix">The Bias Matrix<a hidden class="anchor" aria-hidden="true" href="#the-bias-matrix">#</a></h2>
+<p>Keep the raw ALiBi penalty separate from the causal mask. For &ldquo;announced&rdquo; (position 2), the raw distance penalty with slope <code>m</code> is:</p>
+<pre tabindex="0"><code>Raw ALiBi bias for query at position 2, slope m:
+    The(0)  CEO(1)  ann(2)  rec(3)  ear(4)  on(5)  Fri(6)
+    -2m     -m       0      -m      -2m     -3m    -4m</code></pre>
+<ul>
+<li><strong>Position 2 &rarr; position 2</strong>: zero penalty (self-attention, distance = 0)</li>
+<li><strong>Position 2 &rarr; position 1</strong>: penalty <code>m</code> (1 step away)</li>
+<li><strong>Position 2 &rarr; position 6</strong>: raw penalty <code>4m</code>, but this future token is masked in causal attention</li>
+</ul>
+<p>After the causal mask, the effective row is:</p>
+<pre tabindex="0"><code>Effective causal logits for query at position 2:
+    The(0)  CEO(1)  ann(2)  rec(3)  ear(4)  on(5)  Fri(6)
+    -2m     -m       0      -inf    -inf    -inf   -inf</code></pre>
+<p>The full effective <code>[7, 7]</code> causal bias matrix, applied identically at every layer:</p>
+<figure>
+    <img src="3.%20positional_encoding/asset/alibi_bias_matrix.png" alt="7×7 ALiBi bias matrix for the running example tokens, with causal mask applied. Lower triangle: linear penalty −m × |i-j| from 0 at the diagonal to −6m at the bottom-left corner. Upper triangle: future positions masked by causal mask, shown as −∞" />
+</figure>
+<p>For decoder-only language models, ALiBi is paired with a causal mask. Future positions are <code>-inf</code> before softmax, so only the lower triangle contributes. The symmetric <code>|i - j|</code> formulation is an implementation convenience: precompute the full distance matrix, then let the causal mask handle future tokens separately.</p>
+
+<h2 id="multi-head-slopes">Multi-Head Slopes<a hidden class="anchor" aria-hidden="true" href="#multi-head-slopes">#</a></h2>
+<p>Each head gets a different slope, some heads attend broadly (small <code>m</code>), others focus locally (large <code>m</code>). The slopes form a geometric sequence:</p>
+<pre tabindex="0"><code>For example, with n_heads = 8 (the canonical ALiBi slopes):
+slopes = [2^(-1), 2^(-2), 2^(-3), 2^(-4), 2^(-5), 2^(-6), 2^(-7), 2^(-8)]
+       = [1/2,    1/4,    1/8,    1/16,   1/32,   1/64,   1/128,  1/256 ]</code></pre>
+<ul>
+<li><strong>Head 0 (slope = 1/2)</strong>: steep penalty, strong recency bias, focuses on nearby tokens</li>
+<li><strong>Head 7 (slope = 1/256)</strong>: gentle penalty, can attend to tokens hundreds of positions away</li>
+<li>For power-of-two <code>n_heads</code>, the first slope and common ratio are both <code>2^(-8/n_heads)</code></li>
+</ul>
+<figure>
+    <img src="3.%20positional_encoding/asset/alibi_bias.png" alt="ALiBi penalty curves for 8 attention heads: each head gets a different geometric slope from m=1/2 (Head 0, steep recency bias) to m=1/256 (Head 7, gentle long-range decay)" />
+</figure>
+<figure>
+    <img src="3.%20positional_encoding/asset/alibi_head.png" alt="ALiBi per-head slope visualization" />
+</figure>
+
+<h2 id="train-short-test-long">Train Short, Test Long<a hidden class="anchor" aria-hidden="true" href="#train-short-test-long">#</a></h2>
+<p>The key selling point: ALiBi models trained on short sequences extrapolate to longer ones at inference. Press et al. showed a 1.3B model trained on 1024 tokens extrapolating to 2048, matching the perplexity of a sinusoidal model <em>trained</em> on 2048, while using 11% less memory and 11% less compute.</p>
+<p>The linear bias is defined for any distance, there&rsquo;s no lookup table to run out of, no embedding to extrapolate. A key 2048 tokens away just gets a penalty of <code>2048 * m</code>, which is a natural extension of the training-time pattern.</p>
+<pre tabindex="0"><code class="language-python">class ALiBi(nn.Module):
+    &quot;&quot;&quot;
+    ALiBi_score(i, j) = q_i @ k_j - m * |i - j|
+
+    No learned position parameters. Slopes are fixed geometric sequence.
+    Simplified for power-of-two n_heads; official ALiBi extends this for other counts.
+
+    Args:
+        d_model:  Input embedding dimension.
+        n_heads:  Number of attention heads.
+        max_len:  Maximum sequence length for precomputing the distance matrix.
+    &quot;&quot;&quot;
+
+    def __init__(self, d_model: int, n_heads: int, max_len: int = 2048):
+        super().__init__()
+        assert n_heads &amp; (n_heads - 1) == 0, &quot;This simplified ALiBi example expects power-of-two n_heads&quot;
+        self.n_heads = n_heads
+        self.d_k = d_model // n_heads
+
+        self.W_q = nn.Linear(d_model, d_model, bias=False)
+        self.W_k = nn.Linear(d_model, d_model, bias=False)
+        self.W_v = nn.Linear(d_model, d_model, bias=False)
+        self.W_o = nn.Linear(d_model, d_model, bias=False)
+
+        # Slopes: 2^(-8/n), 2^(-16/n), ..., 2^(-8)
+        slopes = torch.tensor(
+            [2 ** (-8 * h / n_heads) for h in range(1, n_heads + 1)]
+        )                                                          # [n_heads]
+        self.register_buffer(&quot;slopes&quot;, slopes)
+
+        # Toeplitz distance matrix: distances[i,j] = |i - j|
+        positions = torch.arange(max_len)
+        distances = (positions.unsqueeze(0) - positions.unsqueeze(1)).abs().float()
+        self.register_buffer(&quot;distances&quot;, distances)               # [max_len, max_len]
+
+    def forward(self, x: torch.Tensor, mask=None) -&gt; tuple[torch.Tensor, torch.Tensor]:
+        B, T, _ = x.shape
+        Q = self.W_q(x).view(B, T, self.n_heads, self.d_k).transpose(1, 2)  # [B, h, T, d_k]
+        K = self.W_k(x).view(B, T, self.n_heads, self.d_k).transpose(1, 2)
+        V = self.W_v(x).view(B, T, self.n_heads, self.d_k).transpose(1, 2)
+
+        scores = torch.matmul(Q, K.transpose(-2, -1)) / math.sqrt(self.d_k)
+
+        # ALiBi bias: -slopes[h] * |i - j|
+        alibi_bias = -self.slopes.view(1, self.n_heads, 1, 1) * \
+                      self.distances[:T, :T].unsqueeze(0).unsqueeze(0)
+        scores = scores + alibi_bias                               # [B, h, T, T]
+
+        if mask is not None:
+            scores = scores.masked_fill(mask.unsqueeze(0).unsqueeze(0), float(&quot;-inf&quot;))
+        weights = F.softmax(scores, dim=-1)
+        context = torch.matmul(weights, V)
+        context = context.transpose(1, 2).contiguous().view(B, T, -1)
+        return self.W_o(context), weights</code></pre>
+
+<h2 id="alibi-gotchas">Gotchas and Trade-offs<a hidden class="anchor" aria-hidden="true" href="#alibi-gotchas">#</a></h2>
+<ul>
+<li><strong>Zero learned parameters for position</strong>: the slopes and distance matrix are fixed. No trained position embeddings to store</li>
+<li><strong>Recency bias is hardcoded</strong>: the linear decay always penalizes distance. If &ldquo;The&rdquo; and &ldquo;Friday&rdquo; have a strong semantic relationship, every head still pushes that score down. The model must overcome the bias through content scores alone</li>
+<li><strong>Extrapolation has limits</strong>: while better than absolute PE, extrapolation quality degrades at 4-8x training length. The linear assumption doesn&rsquo;t hold for very long contexts</li>
+<li><strong>Efficient attention needs kernel support</strong>: naive ALiBi materializes a <code>[T, T]</code> bias, but optimized kernels can fold the linear bias into attention tiles without storing the full matrix</li>
+</ul>
+
+<h2 id="alibi-architectures">Example Architectures<a hidden class="anchor" aria-hidden="true" href="#alibi-architectures">#</a></h2>
+<ul>
+<li><strong>BLOOM</strong> (BigScience, 176B): ALiBi</li>
+<li><strong>MPT-7B / MPT-30B</strong> (MosaicML): ALiBi + FlashAttention</li>
+</ul>
+
+<h2 id="alibi-key-takeaway">Key Takeaway<a hidden class="anchor" aria-hidden="true" href="#alibi-key-takeaway">#</a></h2>
+<p>ALiBi replaces learned position embeddings with a fixed linear penalty, zero extra parameters, natural length extrapolation. Each head gets a different slope, covering local to global attention ranges.</p>
+<p>The linear decay is a strong inductive bias: it assumes &ldquo;closer is more relevant&rdquo; uniformly across all heads and contexts. Push the position signal into the vectors themselves, and the dot product changes character entirely.</p>
+
+<h1 id="rope">Rotary Positional Encoding (RoPE)<a hidden class="anchor" aria-hidden="true" href="#rope">#</a></h1>
+<p>ALiBi keeps position as an additive score-side bias: content score first, distance penalty second. RoPE takes a different route. Su et al. proposed it in <em>&ldquo;RoFormer: Enhanced Transformer with Rotary Position Embedding&rdquo;</em> (2021): instead of adding a bias after the dot product, rotate the query and key vectors before the dot product, so content and relative position interact inside the score itself.</p>
+<figure>
+    <img src="3.%20positional_encoding/asset/eq_05_rope_highlevel.png" alt="Equations: q_rotated = rotate(q, pos_q), k_rotated = rotate(k, pos_k), score = q_rotated · k_rotated. RoPE rotates Q and K by their absolute positions; the dot product of rotated vectors then encodes the relative position" />
+</figure>
+<ul>
+<li><code>rotate(q, pos)</code> rotates pairs of dimensions by <code>pos * theta_k</code></li>
+<li>The positional part of the dot product depends on the <em>difference</em> <code>pos_q - pos_k</code></li>
+<li>No additive bias, no learned position embeddings, position lives inside Q and K</li>
+</ul>
+
+<h2 id="the-rotation-mechanism">The Rotation Mechanism<a hidden class="anchor" aria-hidden="true" href="#the-rotation-mechanism">#</a></h2>
+<p>RoPE groups the <code>d_k</code> dimensions into pairs and rotates each pair in a 2D plane. Pair <code>k</code> rotates by angle <code>pos * theta_k</code>:</p>
+<figure>
+    <img src="3.%20positional_encoding/asset/eq_06_rope_rotation.png" alt="Equations for RoPE rotation of dimension pair (2k, 2k+1): q'[2k] = q[2k]·cos(pos·θ_k) − q[2k+1]·sin(pos·θ_k); q'[2k+1] = q[2k]·sin(pos·θ_k) + q[2k+1]·cos(pos·θ_k); where θ_k = 1 / 10000^(2k / d_k). This is a 2D rotation by angle pos·θ_k applied to each dimension pair" />
+</figure>
+<ul>
+<li><strong>Same frequency formula as sinusoidal PE</strong>: but applied as <em>rotation</em> to Q/K, not <em>addition</em> to embeddings</li>
+<li><strong>Low <code>k</code></strong> &rarr; high <code>&theta;_k</code> &rarr; fast rotation &rarr; encodes fine-grained local position</li>
+<li><strong>High <code>k</code></strong> &rarr; low <code>&theta;_k</code> &rarr; slow rotation &rarr; barely changes across nearby positions</li>
+</ul>
+<p>For &ldquo;CEO&rdquo; at position 1, each dimension pair in its query vector gets rotated by <code>1 * &theta;_k</code>. For &ldquo;announced&rdquo; at position 2, the same pairs rotate by <code>2 * &theta;_k</code>. When you dot-product them, the angle that matters is <code>(2 - 1) * &theta;_k = &theta;_k</code>, the signed relative offset (it carries direction, unlike ALiBi&rsquo;s symmetric <code>|i - j|</code>).</p>
+<figure>
+    <img src="3.%20positional_encoding/asset/rope_rotation.png" alt="RoPE rotation pipeline diagram. Left: query vector q with shape [batch, n_heads, T, d_k]. Middle: 3 representative dimension pair rotations. Right: rotated output q' with same shape" />
+    <figcaption>Values shown for <code>d_k = 16</code>, matches our running example (<code>d_model = 64</code>, <code>n_heads = 4</code> &rarr; <code>d_k = d_model / n_heads = 16</code>). Each pair <code>k</code> rotates at <code>&theta;_k = 1 / 10000^(2k / d_k)</code>; the wavelength <code>2&pi; / &theta;_k</code> says how many positions complete one full cycle. Pair 0 cycles every ~6 tokens (useful for local order), pair 7 barely moves across 20K positions, preserving content with little positional distortion over short contexts.</figcaption>
+</figure>
+
+<h2 id="why-the-dot-product-encodes-relative-position">Why the Dot Product Encodes Relative Position<a hidden class="anchor" aria-hidden="true" href="#why-the-dot-product-encodes-relative-position">#</a></h2>
+<p>The core mathematical property: when you dot-product two vectors rotated in the same 2D plane, the rotation angles <em>subtract</em>.</p>
+<figure>
+    <img src="3.%20positional_encoding/asset/eq_07_rope_dot.png" alt="Equation: rotate(q, pos_q) · rotate(k, pos_k) = f(q, k, pos_q − pos_k). The dot product of the rotated query and key depends only on the difference in their positions, not on the absolute positions themselves" />
+</figure>
+<ul>
+<li>The positional part of the dot product depends on <code>pos_q - pos_k</code>; the full score still depends on the content of <code>q</code> and <code>k</code></li>
+<li><strong>Translation invariant</strong>: &ldquo;announced&rdquo; attending to &ldquo;CEO&rdquo; at positions 2&rarr;1 produces the same positional signal as at positions 51&rarr;50</li>
+<li><strong>No bias matrix needed</strong>: position lives in the vectors themselves, not in an additive term</li>
+</ul>
+<p>This makes RoPE drop-in compatible with vanilla FlashAttention: there is no bias term to fuse in, because position information is already baked into Q and K before the dot product.</p>
+
+<h2 id="the-two-bands">The Two Bands: Position vs. Semantics<a hidden class="anchor" aria-hidden="true" href="#the-two-bands">#</a></h2>
+<p>Research from <em>&ldquo;Round and Round We Go! What makes Rotary Positional Encodings useful?&rdquo;</em> (Barbero et al., ICLR 2025) found that trained RoPE-based LLMs, such as Gemma 7B, empirically separate dimensions into two functional bands:</p>
+<ul>
+<li><strong>High-frequency dimensions</strong> (low <code>k</code>, fast rotation): in Gemma 7B, are heavily used to construct <em>positional</em> attention patterns, since fast rotation makes relative offsets easy to distinguish</li>
+<li><strong>Low-frequency dimensions</strong> (high <code>k</code>, slow rotation): the paper <em>suspects</em> these carry more <em>semantic</em> information, since their rotation changes slowly enough over normal context lengths that content is less distorted</li>
+</ul>
+<figure>
+    <img src="3.%20positional_encoding/asset/rope_bands.png" alt="Scatter plot of RoPE dimension index vs activation norm showing two functional bands: high-frequency dimensions cluster as positional channels, low-frequency dimensions are suspected to carry more content/semantic information" />
+</figure>
+<p>This division works well for short-to-medium contexts. But at very long sequences, even low-frequency dimensions can accumulate enough phase drift to interfere with the content information stored there.</p>
+
+<h2 id="context-length-extension">Context Length Extension<a hidden class="anchor" aria-hidden="true" href="#context-length-extension">#</a></h2>
+<p>RoPE&rsquo;s base <code>theta_base</code> controls the wavelength spectrum. Larger bases lower the frequencies, so rotations accumulate more slowly across distance:</p>
+<figure>
+    <img src="3.%20positional_encoding/asset/eq_08_rope_theta_extension.png" alt="Equations comparing RoPE base values. Standard base: θ_k = 1 / 10000^(2k / d_k), shorter wavelengths and faster rotation. Larger long-context base: θ_k = 1 / 1000000^(2k / d_k), longer wavelengths and slower rotation" />
+</figure>
+<ul>
+<li><strong>Higher base &rarr; lower frequencies &rarr; slower rotation</strong>, which can support longer context when paired with the right training or scaling method</li>
+<li>LLaMA 3 uses <code>&theta;_base = 500,000</code> (native 8K context); LLaMA 3.1 / 3.3 keep that base and add the <code>llama3</code> RoPE scaling scheme (low-/high-frequency interpolation) to reach 128K</li>
+<li>Gemma 3 uses <code>&theta;_base = 10,000</code> for local layers and <code>&theta;_base = 1,000,000</code> for global layers</li>
+</ul>
+<p>Other extension methods include <strong>NTK-aware scaling</strong> (interpolation in the frequency domain) and <strong>YaRN</strong> (frequency interpolation plus attention scaling). All try to preserve useful relative phases over longer distances without destroying short-range resolution.</p>
+<pre tabindex="0"><code class="language-python">class RotaryPE(nn.Module):
+    &quot;&quot;&quot;
+    q'[2k]   = q[2k] * cos(pos * θ_k) - q[2k+1] * sin(pos * θ_k)
+    q'[2k+1] = q[2k] * sin(pos * θ_k) + q[2k+1] * cos(pos * θ_k)
+    where θ_k = 1 / theta_base^(2k / d_k)
+
+    Args:
+        d_k:        Dimension per head.
+        max_len:    Maximum sequence length to precompute.
+        theta_base: RoPE base controlling the wavelength spectrum.
+    &quot;&quot;&quot;
+
+    def __init__(self, d_k: int, max_len: int = 4096, theta_base: float = 10000.0):
+        super().__init__()
+        # Frequencies: θ_k for k = 0, ..., d_k/2 - 1
+        freqs = 1.0 / (theta_base ** (torch.arange(0, d_k, 2).float() / d_k))  # [d_k/2]
+        angles = torch.outer(torch.arange(max_len).float(), freqs)               # [max_len, d_k/2]
+        self.register_buffer(&quot;cos_cached&quot;, angles.cos())  # [max_len, d_k/2]
+        self.register_buffer(&quot;sin_cached&quot;, angles.sin())
+
+    def forward(self, x: torch.Tensor) -&gt; torch.Tensor:
+        &quot;&quot;&quot;x: [batch, n_heads, seq_len, d_k] → rotated, same shape.&quot;&quot;&quot;
+        T = x.size(2)
+        cos = self.cos_cached[:T].unsqueeze(0).unsqueeze(0)  # [1, 1, T, d_k/2]
+        sin = self.sin_cached[:T].unsqueeze(0).unsqueeze(0)
+
+        # Split into interleaved pairs (2k, 2k+1) and apply 2D rotation per pair.
+        # HuggingFace's rotate_half often uses block pairing (k, k + d_k/2);
+        # the two layouts are equivalent up to a fixed permutation of head dims.
+        x_even = x[..., 0::2]  # [B, h, T, d_k/2]
+        x_odd  = x[..., 1::2]
+
+        rotated_even = x_even * cos - x_odd * sin
+        rotated_odd  = x_even * sin + x_odd * cos
+
+        # Interleave back: [even0, odd0, even1, odd1, ...]
+        return torch.stack([rotated_even, rotated_odd], dim=-1).flatten(-2)</code></pre>
+<p>In attention, apply RoPE separately to queries and keys, not values:</p>
+<pre tabindex="0"><code class="language-python">q_rot = rope(Q)
+k_rot = rope(K)
+scores = torch.matmul(q_rot, k_rot.transpose(-2, -1)) / math.sqrt(d_k)</code></pre>
+<p>Run the full implementation with relative position property verification in the <a href="https://github.com/david-hoangt/llm_from_scratch/blob/main/src/positional_encoding/5.%20positional_encoding.ipynb">positional encoding notebook</a>.</p>
+
+<h2 id="rope-gotchas">Gotchas and Trade-offs<a hidden class="anchor" aria-hidden="true" href="#rope-gotchas">#</a></h2>
+<ul>
+<li><strong>Drop-in fast-attention path</strong>: RoPE only modifies Q/K before attention, so vanilla FlashAttention can run without fusing an extra bias term</li>
+<li><strong>Signed offset from absolute rotation</strong>: each vector is rotated by its absolute position, but the dot product sees the relative offset <code>pos_q - pos_k</code></li>
+<li><strong>Context extension usually needs continued training</strong>: changing <code>theta_base</code> or applying NTK / YaRN scaling shifts the model&rsquo;s positional phases, so short fine-tuning is usually needed for best quality</li>
+<li><strong>Low-frequency band can degrade at extreme lengths</strong>: dimensions that carried content with little rotation at shorter contexts can accumulate enough phase drift to interfere with that content at much longer contexts</li>
+</ul>
+
+<h2 id="rope-architectures">Example Architectures<a hidden class="anchor" aria-hidden="true" href="#rope-architectures">#</a></h2>
+<ul>
+<li><strong>LLaMA 3 / 3.1 / 3.3</strong>: RoPE with <code>&theta;_base = 500,000</code> (8K native; 3.1/3.3 reach 128K via <code>llama3</code> RoPE scaling)</li>
+<li><strong>Qwen 3 dense / MoE</strong>: RoPE with <code>&theta;_base = 1,000,000</code>; deployment docs recommend YaRN only when extending beyond the 32K pretraining context</li>
+<li><strong>Qwen 3 2507 long-context variants</strong>: RoPE with <code>&theta;_base = 5,000,000</code> and 262K configured context</li>
+<li><strong>Gemma 3</strong>: RoPE with local/global attention layers; local layers use base <code>10,000</code>, global layers use base <code>1,000,000</code></li>
+<li><strong>Gemma 4</strong>: RoPE-family design; sliding layers use default RoPE, full-attention layers use proportional / partial RoPE (<code>partial_rotary_factor = 0.25</code>, base <code>1,000,000</code>)</li>
+<li><strong>DeepSeek-V2/V3</strong>: RoPE (applied to a portion of the head dims, rest handled by MLA)</li>
+</ul>
+
+<h2 id="rope-key-takeaway">Key Takeaway<a hidden class="anchor" aria-hidden="true" href="#rope-key-takeaway">#</a></h2>
+<p>RoPE rotates Q and K vectors by position-dependent angles, encoding signed relative offset directly in the dot product without additive biases or learned embeddings. It&rsquo;s the default PE in recent decoder-only open-weight LLMs: LLaMA, Mistral, Gemma, Qwen, and DeepSeek all ship with it.</p>
+<p>Once rotation works, the next question is whether every dimension needs it. If low-frequency dimensions mostly carry content, applying rotation to all of them can become a liability at very long contexts.</p>
+
+<p><em>From this point on, the question changes, from <strong>how</strong> to encode position to <strong>how much</strong> position the model actually needs. The following two sections cover recent developments (2025-2026). If you&rsquo;re here for the fundamentals, the RoPE section above is the current industry default.</em></p>
+
+<h1 id="p-rope">Bonus: p-RoPE (Gemma 4)<a hidden class="anchor" aria-hidden="true" href="#p-rope">#</a></h1>
+<p>Once you understand RoPE, p-RoPE is simple: don&rsquo;t rotate every dimension.</p>
+<p>Barbero et al. observed that trained RoPE models tend to use high-frequency dimensions for positional patterns, while lower-frequency dimensions appear to carry more content. At very long contexts, even slow rotations can accumulate phase drift. Gemma 4 uses <strong>proportional RoPE (p-RoPE)</strong> in global attention layers: apply RoPE only to a fraction <code>p</code> of the head dimension and leave the rest position-free.</p>
+<pre tabindex="0"><code>For p = 0.25:
+  first 25% of head dims: RoPE rotation applied
+  remaining 75%:          no RoPE rotation</code></pre>
+<figure>
+    <img src="3.%20positional_encoding/asset/p_rope_rotation.png" alt="Illustrative p-RoPE split for 64 dimension pairs. Top row: standard RoPE rotates all 64 pairs from fast to slow frequencies. Bottom row: p-RoPE with p=0.25 rotates only the first 16 high-frequency pairs and leaves the remaining 48 pairs position-free with no RoPE rotation" />
+</figure>
+<ul>
+<li><strong>Standard RoPE</strong>: every dimension pair rotates, from fast to slow frequencies</li>
+<li><strong>p-RoPE</strong>: only the highest-frequency portion rotates; the rest avoids rotation-induced drift</li>
+</ul>
+<p><em>Illustrative split for <code>p = 0.25</code>: 16 of 64 dimension pairs rotate, while 48 pairs are left position-free. Gemma 4&rsquo;s full-attention layers use the same ratio through <code>partial_rotary_factor = 0.25</code> with base <code>1,000,000</code>; sliding-window layers still use standard RoPE with base <code>10,000</code> for local order.</em></p>
+<p>The trade-off is positional bandwidth: with <code>p = 0.25</code>, only one quarter of the rotated head dimensions carry explicit position. Gemma 4 makes that trade in its full-attention layers, where long-context drift matters most.</p>
+<p><strong>Key takeaway:</strong> p-RoPE is not a new positional encoding family so much as a selective RoPE rule: rotate the dimensions most useful for position, leave the rest available for content. It keeps RoPE&rsquo;s relative-position behavior while reducing long-context phase drift.</p>
+
+<h1 id="nope">NoPE and Hybrid Positional Layers<a hidden class="anchor" aria-hidden="true" href="#nope">#</a></h1>
+<p>p-RoPE bets that 75% of dimensions can run without explicit position information, and Gemma 4 ships on that bet. If some dimensions survive without explicit position, can a whole layer do the same?</p>
+<p>Haviv et al. showed in <em>&ldquo;Transformer Language Models without Positional Encodings Still Learn Positional Information&rdquo;</em> (EMNLP Findings, 2022) that causal decoder-only transformers trained with <em>no</em> positional encoding are competitive with standard models. Kazemnejad et al. (<em>&ldquo;The Impact of Positional Encoding on Length Generalization in Transformers&rdquo;</em>, NeurIPS 2023) went further: on algorithmic tasks (addition, sorting, polynomial evaluation), NoPE outperforms all explicit PE methods at length generalization. On general language modeling, NoPE is competitive but not dominant, which is why the practical frontier is hybrid, not pure NoPE.</p>
+<figure>
+    <img src="3.%20positional_encoding/asset/eq_09_nope.png" alt="Equations comparing standard transformer and NoPE input. Standard: x = token_embedding + PE(position). NoPE: x = token_embedding. NoPE skips adding any position vector to the input embeddings" />
+</figure>
+<p>No PE addition, no rotation, no bias. Just token embeddings into the attention layers.</p>
+
+<h2 id="why-it-works">Why It Works: The Causal Mask Provides a Position Cue<a hidden class="anchor" aria-hidden="true" href="#why-it-works">#</a></h2>
+<p>In a causal (autoregressive) transformer, the attention mask reveals position implicitly:</p>
+<figure>
+    <img src="3.%20positional_encoding/asset/nope_causal_mask.png" alt="7×7 causal mask for the running example tokens. Lower-triangular pattern with row counts annotated on the right: 'The' attends to 1 token, 'CEO' to 2, 'announced' to 3, ... up to 'Friday' attending to all 7. Each row has a unique number of visible cells, giving the model an implicit position cue" />
+</figure>
+<ul>
+<li><strong>&ldquo;The&rdquo; attends to 1 token</strong> &rarr; the model infers &ldquo;I am position 0&rdquo;</li>
+<li><strong>&ldquo;Friday&rdquo; attends to 7 tokens</strong> &rarr; the model infers &ldquo;I am position 6&rdquo;</li>
+<li>Each row has a unique &ldquo;shape&rdquo;, the number of available keys is a direct proxy for absolute position</li>
+</ul>
+<p>The causal mask gives the model an implicit position cue: row <code>i</code> can see exactly <code>i + 1</code> keys. NoPE models can learn to turn that row shape into internal position representations.</p>
+<p>A second mechanism reinforces this: nearby token embeddings in causal transformers naturally develop higher similarity than distant ones, creating a position-dependent similarity gradient, even in <em>untrained</em> models (COLING 2025). The causal mask architecture itself induces positional structure.</p>
+<pre tabindex="0"><code class="language-python">class NoPEAttention(nn.Module):
+    &quot;&quot;&quot;
+    Causal self-attention with NO positional encoding.
+    Implicit position cues come from the causal mask and learned attention dynamics.
+    &quot;&quot;&quot;
+
+    def __init__(self, d_model: int, n_heads: int):
+        super().__init__()
+        self.n_heads = n_heads
+        self.d_k = d_model // n_heads
+
+        self.W_q = nn.Linear(d_model, d_model, bias=False)
+        self.W_k = nn.Linear(d_model, d_model, bias=False)
+        self.W_v = nn.Linear(d_model, d_model, bias=False)
+        self.W_o = nn.Linear(d_model, d_model, bias=False)
+
+    def forward(self, x: torch.Tensor) -&gt; tuple[torch.Tensor, torch.Tensor]:
+        B, T, _ = x.shape
+        Q = self.W_q(x).view(B, T, self.n_heads, self.d_k).transpose(1, 2)  # [B, h, T, d_k]
+        K = self.W_k(x).view(B, T, self.n_heads, self.d_k).transpose(1, 2)
+        V = self.W_v(x).view(B, T, self.n_heads, self.d_k).transpose(1, 2)
+
+        # No PE: no rotation, no bias, no position embedding added
+        scores = torch.matmul(Q, K.transpose(-2, -1)) / math.sqrt(self.d_k)
+
+        # Causal mask, the only implicit position cue in this layer
+        causal_mask = torch.triu(
+            torch.ones(T, T, dtype=torch.bool, device=x.device), diagonal=1
+        )
+        scores = scores.masked_fill(causal_mask.unsqueeze(0).unsqueeze(0), float(&quot;-inf&quot;))
+
+        weights = F.softmax(scores, dim=-1)               # [B, h, T, T]
+        context = torch.matmul(weights, V)                  # [B, h, T, d_k]
+        context = context.transpose(1, 2).contiguous().view(B, T, -1)
+        return self.W_o(context), weights</code></pre>
+
+<h2 id="why-plain-nope-does-not-work-for-encoders">Why Plain NoPE Does Not Work for Encoders<a hidden class="anchor" aria-hidden="true" href="#why-plain-nope-does-not-work-for-encoders">#</a></h2>
+<p>This only works because the causal mask is asymmetric. In a bidirectional encoder (BERT-style), every token attends to every other token, the mask is all 1s. &ldquo;CEO&rdquo; at position 1 sees the same set of keys as &ldquo;CEO&rdquo; at position 4. No implicit position signal exists, so explicit PE remains necessary.</p>
+<figure>
+    <img src="3.%20positional_encoding/asset/nope_masks.png" alt="Side-by-side 7×7 attention mask comparison for the running example tokens. Left (Causal Attention - Decoder): lower-triangular pattern, row counts grow 1, 2, 3, 4, 5, 6, 7. Right (Bidirectional Attention - Encoder): full all-ones matrix, every row has count 7" />
+</figure>
+
+<h2 id="the-hybrid-rope-nope">The Hybrid: RoPE + NoPE<a hidden class="anchor" aria-hidden="true" href="#the-hybrid-rope-nope">#</a></h2>
+<p>Yang et al. (<em>&ldquo;RoPE to NoPE and Back Again&rdquo;</em>, 2025) found that RoPE and NoPE layers specialize for different tasks:</p>
+<ul>
+<li><strong>RoPE layers</strong>: strong recency bias, good at local patterns. Handle nearby context</li>
+<li><strong>NoPE layers</strong>: weak recency bias, strong retrieval. Handle needle-in-a-haystack across long contexts</li>
+</ul>
+<p>Yang et al. propose a practical 3:1 interleaving pattern:</p>
+<pre tabindex="0"><code>Layer pattern (repeating):
+  3 × RoPE + Sliding Window (local focus, positional bias)
+  1 × NoPE + Full Attention  (global retrieval, no positional bias)</code></pre>
+<p>They report stronger long-context retrieval and lower training/inference cost than full-RoPE baselines: RoPE layers use sliding-window attention for local work, while NoPE layers keep full attention for retrieval.</p>
+<p>SmolLM3 (HuggingFace, 3B) adopted this pattern: RoPE on 3 out of every 4 layers, NoPE on the 4th.</p>
+<figure>
+    <img src="3.%20positional_encoding/asset/sw_vs_global.png" alt="Sliding window vs global attention pattern visualization for the RoPE+NoPE hybrid layer schedule" />
+</figure>
+
+<h2 id="nope-gotchas">Gotchas and Trade-offs<a hidden class="anchor" aria-hidden="true" href="#nope-gotchas">#</a></h2>
+<ul>
+<li><strong>Decoder-side mechanism</strong>: NoPE relies on the asymmetric causal mask for implicit position. Plain NoPE does not work for bidirectional encoder layers, where every row sees the same keys</li>
+<li><strong>Length generalization</strong>: on algorithmic tasks, NoPE outperforms all explicit PE schemes on generalization to unseen sequence lengths (Kazemnejad et al., NeurIPS 2023), but the generalization window is still finite</li>
+<li><strong>Hybrid is the practical choice</strong>: pure NoPE leaves the model without explicit positional signals for local patterns where recency matters. The RoPE+NoPE hybrid covers both needs</li>
+<li><strong>Conceptual link to p-RoPE</strong>: p-RoPE keeps 75% of dimensions position-free; NoPE layers keep 100% of dimensions position-free. The hybrid RoPE+NoPE architecture achieves a similar effect at the layer level instead of the dimension level</li>
+</ul>
+
+<h2 id="nope-key-takeaway">Key Takeaway<a hidden class="anchor" aria-hidden="true" href="#nope-key-takeaway">#</a></h2>
+<p>Causal attention masks provide implicit position cues, making explicit PE optional in some decoder-only layers. The practical frontier is hybrid: interleave RoPE layers for local positional structure with NoPE layers for full-context retrieval, getting the benefits of both while reducing computation.</p>
+
+<h1 id="which-pe-should-you-use">Which PE Should You Use?<a hidden class="anchor" aria-hidden="true" href="#which-pe-should-you-use">#</a></h1>
+<p>The trajectory across this post: from injecting position <em>into the input</em> (absolute), to <em>into the attention score</em> (relative, ALiBi), to <em>into the query-key vectors</em> (RoPE), to <em>only where needed</em> (p-RoPE), to <em>not at all</em> (NoPE). Each step pushed the question: how little explicit position information can you get away with?</p>
+<ul>
+<li><strong>Decoder-only LLM, within its native context</strong> &rarr; RoPE. Industry default. Used by LLaMA, Mistral, Gemma, Qwen, DeepSeek</li>
+<li><strong>Decoder-only, extended long context (128K+)</strong> &rarr; RoPE scaling, hybrid RoPE + NoPE layers (SmolLM3), or p-RoPE (Gemma 4). The newer hybrids reduce long-distance rotation exposure at different granularity: p-RoPE by dimension, RoPE+NoPE by layer</li>
+<li><strong>Need length extrapolation without retraining</strong> &rarr; ALiBi. Linear bias generalizes naturally to unseen positions: but adoption has stalled as RoPE scaling methods (NTK, YaRN) matured</li>
+<li><strong>Encoder model (BERT-style)</strong> &rarr; absolute PE (learned) or relative PE. NoPE doesn&rsquo;t work without a causal mask</li>
+<li><strong>Research / pedagogy</strong> &rarr; sinusoidal PE. Simplest, no learned parameters, good for understanding the fundamentals</li>
+</ul>
+
+<h1 id="references">References<a hidden class="anchor" aria-hidden="true" href="#references">#</a></h1>
+<ul>
+<li>Vaswani et al., <em>&ldquo;Attention Is All You Need&rdquo;</em>, NeurIPS 2017, sinusoidal positional encoding</li>
+<li>Shaw et al., <em>&ldquo;Self-Attention with Relative Position Representations&rdquo;</em>, NAACL 2018, relative position representations</li>
+<li>Dai et al., <em>&ldquo;Transformer-XL: Attentive Language Models Beyond a Fixed-Length Context&rdquo;</em>, ACL 2019, decomposed relative PE</li>
+<li>Raffel et al., <em>&ldquo;Exploring the Limits of Transfer Learning with a Unified Text-to-Text Transformer&rdquo;</em> (T5), JMLR 2020, relative position buckets</li>
+<li>Su et al., <em>&ldquo;RoFormer: Enhanced Transformer with Rotary Position Embedding&rdquo;</em>, 2021, RoPE</li>
+<li>Press, Smith, Lewis, <em>&ldquo;Train Short, Test Long: Attention with Linear Biases Enables Input Length Extrapolation&rdquo;</em>, ICLR 2022, ALiBi</li>
+<li>Haviv et al., <em>&ldquo;Transformer Language Models without Positional Encodings Still Learn Positional Information&rdquo;</em>, Findings of EMNLP 2022, NoPE</li>
+<li>Kazemnejad et al., <em>&ldquo;The Impact of Positional Encoding on Length Generalization in Transformers&rdquo;</em>, NeurIPS 2023, NoPE outperforms explicit PE on length generalization</li>
+<li>Barbero et al., <em>&ldquo;Round and Round We Go! What makes Rotary Positional Encodings useful?&rdquo;</em>, ICLR 2025, RoPE two-band analysis</li>
+<li>Yang et al., <em>&ldquo;RoPE to NoPE and Back Again: A New Hybrid Attention Strategy&rdquo;</em>, 2025, hybrid RoPE/NoPE architecture</li>
+<li>Gemma 4 model card, Google DeepMind, 2026, p-RoPE with <code>p = 0.25</code></li>
+</ul>
+
+
+</div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="../../tags/transformer/">transformer</a></li>
+      <li><a href="../../tags/attention/">attention</a></li>
+      <li><a href="../../tags/positional-encoding/">positional-encoding</a></li>
+      <li><a href="../../tags/deep-learning/">deep-learning</a></li>
+      <li><a href="../../tags/long-read/">long-read</a></li>
+    </ul>
+<nav class="paginav">
+</nav>
+
+
+<div class="share-buttons">
+    <a target="_blank" rel="noopener noreferrer" aria-label="share Positional Encoding: How Transformers Learn Where Tokens Sit on twitter"
+        href="https://twitter.com/intent/tweet/?text=Positional%20Encoding%3a%20How%20Transformers%20Learn%20Where%20Tokens%20Sit&amp;url=https%3a%2f%2fdavid-hoangt.github.io%2fposts%2f2026-05-06-positional-encoding%2f&amp;hashtags=transformer%2cattention%2cpositional-encoding%2cdeep-learning%2clong-read">
+        <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve">
+            <path
+                d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-386.892,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Zm-253.927,424.544c135.939,0 210.268,-112.643 210.268,-210.268c0,-3.218 0,-6.437 -0.153,-9.502c14.406,-10.421 26.973,-23.448 36.935,-38.314c-13.18,5.824 -27.433,9.809 -42.452,11.648c15.326,-9.196 26.973,-23.602 32.49,-40.92c-14.252,8.429 -30.038,14.56 -46.896,17.931c-13.487,-14.406 -32.644,-23.295 -53.946,-23.295c-40.767,0 -73.87,33.104 -73.87,73.87c0,5.824 0.613,11.494 1.992,16.858c-61.456,-3.065 -115.862,-32.49 -152.337,-77.241c-6.284,10.881 -9.962,23.601 -9.962,37.088c0,25.594 13.027,48.276 32.95,61.456c-12.107,-0.307 -23.448,-3.678 -33.41,-9.196l0,0.92c0,35.862 25.441,65.594 59.311,72.49c-6.13,1.686 -12.72,2.606 -19.464,2.606c-4.751,0 -9.348,-0.46 -13.946,-1.38c9.349,29.426 36.628,50.728 68.965,51.341c-25.287,19.771 -57.164,31.571 -91.8,31.571c-5.977,0 -11.801,-0.306 -17.625,-1.073c32.337,21.15 71.264,33.41 112.95,33.41Z" />
+        </svg>
+    </a>
+    <a target="_blank" rel="noopener noreferrer" aria-label="share Positional Encoding: How Transformers Learn Where Tokens Sit on linkedin"
+        href="https://www.linkedin.com/shareArticle?mini=true&amp;url=https%3a%2f%2fdavid-hoangt.github.io%2fposts%2f2026-05-06-positional-encoding%2f&amp;title=Positional%20Encoding%3a%20How%20Transformers%20Learn%20Where%20Tokens%20Sit&amp;summary=Positional%20Encoding%3a%20How%20Transformers%20Learn%20Where%20Tokens%20Sit&amp;source=https%3a%2f%2fdavid-hoangt.github.io%2fposts%2f2026-05-06-positional-encoding%2f">
+        <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve">
+            <path
+                d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-386.892,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Zm-288.985,423.278l0,-225.717l-75.04,0l0,225.717l75.04,0Zm270.539,0l0,-129.439c0,-69.333 -37.018,-101.586 -86.381,-101.586c-39.804,0 -57.634,21.891 -67.617,37.266l0,-31.958l-75.021,0c0.995,21.181 0,225.717 0,225.717l75.02,0l0,-126.056c0,-6.748 0.486,-13.492 2.474,-18.315c5.414,-13.475 17.767,-27.434 38.494,-27.434c27.135,0 38.007,20.707 38.007,51.037l0,120.768l75.024,0Zm-307.552,-334.556c-25.674,0 -42.448,16.879 -42.448,39.002c0,21.658 16.264,39.002 41.455,39.002l0.484,0c26.165,0 42.452,-17.344 42.452,-39.002c-0.485,-22.092 -16.241,-38.954 -41.943,-39.002Z" />
+        </svg>
+    </a>
+    <a target="_blank" rel="noopener noreferrer" aria-label="share Positional Encoding: How Transformers Learn Where Tokens Sit on reddit"
+        href="https://reddit.com/submit?url=https%3a%2f%2fdavid-hoangt.github.io%2fposts%2f2026-05-06-positional-encoding%2f&title=Positional%20Encoding%3a%20How%20Transformers%20Learn%20Where%20Tokens%20Sit">
+        <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve">
+            <path
+                d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-386.892,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Zm-3.446,265.638c0,-22.964 -18.616,-41.58 -41.58,-41.58c-11.211,0 -21.361,4.457 -28.841,11.666c-28.424,-20.508 -67.586,-33.757 -111.204,-35.278l18.941,-89.121l61.884,13.157c0.756,15.734 13.642,28.29 29.56,28.29c16.407,0 29.706,-13.299 29.706,-29.701c0,-16.403 -13.299,-29.702 -29.706,-29.702c-11.666,0 -21.657,6.792 -26.515,16.578l-69.105,-14.69c-1.922,-0.418 -3.939,-0.042 -5.585,1.036c-1.658,1.073 -2.811,2.761 -3.224,4.686l-21.152,99.438c-44.258,1.228 -84.046,14.494 -112.837,35.232c-7.468,-7.164 -17.589,-11.591 -28.757,-11.591c-22.965,0 -41.585,18.616 -41.585,41.58c0,16.896 10.095,31.41 24.568,37.918c-0.639,4.135 -0.99,8.328 -0.99,12.576c0,63.977 74.469,115.836 166.33,115.836c91.861,0 166.334,-51.859 166.334,-115.836c0,-4.218 -0.347,-8.387 -0.977,-12.493c14.564,-6.47 24.735,-21.034 24.735,-38.001Zm-119.474,108.193c-20.27,20.241 -59.115,21.816 -70.534,21.816c-11.428,0 -50.277,-1.575 -70.522,-21.82c-3.007,-3.008 -3.007,-7.882 0,-10.889c3.003,-2.999 7.882,-3.003 10.885,0c12.777,12.781 40.11,17.317 59.637,17.317c19.522,0 46.86,-4.536 59.657,-17.321c3.016,-2.999 7.886,-2.995 10.885,0.008c3.008,3.011 3.003,7.882 -0.008,10.889Zm-5.23,-48.781c-16.373,0 -29.701,-13.324 -29.701,-29.698c0,-16.381 13.328,-29.714 29.701,-29.714c16.378,0 29.706,13.333 29.706,29.714c0,16.374 -13.328,29.698 -29.706,29.698Zm-160.386,-29.702c0,-16.381 13.328,-29.71 29.714,-29.71c16.369,0 29.689,13.329 29.689,29.71c0,16.373 -13.32,29.693 -29.689,29.693c-16.386,0 -29.714,-13.32 -29.714,-29.693Z" />
+        </svg>
+    </a>
+    <a target="_blank" rel="noopener noreferrer" aria-label="share Positional Encoding: How Transformers Learn Where Tokens Sit on facebook"
+        href="https://facebook.com/sharer/sharer.php?u=https%3a%2f%2fdavid-hoangt.github.io%2fposts%2f2026-05-06-positional-encoding%2f">
+        <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve">
+            <path
+                d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-106.468,0l0,-192.915l66.6,0l12.672,-82.621l-79.272,0l0,-53.617c0,-22.603 11.073,-44.636 46.58,-44.636l36.042,0l0,-70.34c0,0 -32.71,-5.582 -63.982,-5.582c-65.288,0 -107.96,39.569 -107.96,111.204l0,62.971l-72.573,0l0,82.621l72.573,0l0,192.915l-191.104,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Z" />
+        </svg>
+    </a>
+    <a target="_blank" rel="noopener noreferrer" aria-label="share Positional Encoding: How Transformers Learn Where Tokens Sit on whatsapp"
+        href="https://api.whatsapp.com/send?text=Positional%20Encoding%3a%20How%20Transformers%20Learn%20Where%20Tokens%20Sit%20-%20https%3a%2f%2fdavid-hoangt.github.io%2fposts%2f2026-05-06-positional-encoding%2f">
+        <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve">
+            <path
+                d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-386.892,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Zm-58.673,127.703c-33.842,-33.881 -78.847,-52.548 -126.798,-52.568c-98.799,0 -179.21,80.405 -179.249,179.234c-0.013,31.593 8.241,62.428 23.927,89.612l-25.429,92.884l95.021,-24.925c26.181,14.28 55.659,21.807 85.658,21.816l0.074,0c98.789,0 179.206,-80.413 179.247,-179.243c0.018,-47.895 -18.61,-92.93 -52.451,-126.81Zm-126.797,275.782l-0.06,0c-26.734,-0.01 -52.954,-7.193 -75.828,-20.767l-5.441,-3.229l-56.386,14.792l15.05,-54.977l-3.542,-5.637c-14.913,-23.72 -22.791,-51.136 -22.779,-79.287c0.033,-82.142 66.867,-148.971 149.046,-148.971c39.793,0.014 77.199,15.531 105.329,43.692c28.128,28.16 43.609,65.592 43.594,105.4c-0.034,82.149 -66.866,148.983 -148.983,148.984Zm81.721,-111.581c-4.479,-2.242 -26.499,-13.075 -30.604,-14.571c-4.105,-1.495 -7.091,-2.241 -10.077,2.241c-2.986,4.483 -11.569,14.572 -14.182,17.562c-2.612,2.988 -5.225,3.364 -9.703,1.12c-4.479,-2.241 -18.91,-6.97 -36.017,-22.23c-13.314,-11.876 -22.304,-26.542 -24.916,-31.026c-2.612,-4.484 -0.279,-6.908 1.963,-9.14c2.016,-2.007 4.48,-5.232 6.719,-7.847c2.24,-2.615 2.986,-4.484 4.479,-7.472c1.493,-2.99 0.747,-5.604 -0.374,-7.846c-1.119,-2.241 -10.077,-24.288 -13.809,-33.256c-3.635,-8.733 -7.327,-7.55 -10.077,-7.688c-2.609,-0.13 -5.598,-0.158 -8.583,-0.158c-2.986,0 -7.839,1.121 -11.944,5.604c-4.105,4.484 -15.675,15.32 -15.675,37.364c0,22.046 16.048,43.342 18.287,46.332c2.24,2.99 31.582,48.227 76.511,67.627c10.685,4.615 19.028,7.371 25.533,9.434c10.728,3.41 20.492,2.929 28.209,1.775c8.605,-1.285 26.499,-10.833 30.231,-21.295c3.732,-10.464 3.732,-19.431 2.612,-21.298c-1.119,-1.869 -4.105,-2.99 -8.583,-5.232Z" />
+        </svg>
+    </a>
+    <a target="_blank" rel="noopener noreferrer" aria-label="share Positional Encoding: How Transformers Learn Where Tokens Sit on telegram"
+        href="https://telegram.me/share/url?text=Positional%20Encoding%3a%20How%20Transformers%20Learn%20Where%20Tokens%20Sit&amp;url=https%3a%2f%2fdavid-hoangt.github.io%2fposts%2f2026-05-06-positional-encoding%2f">
+        <svg version="1.1" xml:space="preserve" viewBox="2 2 28 28">
+            <path
+                d="M26.49,29.86H5.5a3.37,3.37,0,0,1-2.47-1,3.35,3.35,0,0,1-1-2.47V5.48A3.36,3.36,0,0,1,3,3,3.37,3.37,0,0,1,5.5,2h21A3.38,3.38,0,0,1,29,3a3.36,3.36,0,0,1,1,2.46V26.37a3.35,3.35,0,0,1-1,2.47A3.38,3.38,0,0,1,26.49,29.86Zm-5.38-6.71a.79.79,0,0,0,.85-.66L24.73,9.24a.55.55,0,0,0-.18-.46.62.62,0,0,0-.41-.17q-.08,0-16.53,6.11a.59.59,0,0,0-.41.59.57.57,0,0,0,.43.52l4,1.24,1.61,4.83a.62.62,0,0,0,.63.43.56.56,0,0,0,.4-.17L16.54,20l4.09,3A.9.9,0,0,0,21.11,23.15ZM13.8,20.71l-1.21-4q8.72-5.55,8.78-5.55c.15,0,.23,0,.23.16a.18.18,0,0,1,0,.06s-2.51,2.3-7.52,6.8Z" />
+        </svg>
+    </a>
+</div>
+
+  </footer>
+</article>
+    </main>
+
+<footer class="footer">
+    <span>&copy; 2026 <a href="../../">David&#39;s Whiteboard</a></span>
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &amp;
+        <a href="https://git.io/hugopapermod" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+<script>
+    document.querySelectorAll('pre > code').forEach((codeblock) => {
+        const container = codeblock.parentNode.parentNode;
+
+        const copybutton = document.createElement('button');
+        copybutton.classList.add('copy-code');
+        copybutton.innerText = 'copy';
+
+        function copyingDone() {
+            copybutton.innerText = 'copied!';
+            setTimeout(() => {
+                copybutton.innerText = 'copy';
+            }, 2000);
+        }
+
+        copybutton.addEventListener('click', (cb) => {
+            if ('clipboard' in navigator) {
+                navigator.clipboard.writeText(codeblock.textContent);
+                copyingDone();
+                return;
+            }
+
+            const range = document.createRange();
+            range.selectNodeContents(codeblock);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+            try {
+                document.execCommand('copy');
+                copyingDone();
+            } catch (e) { };
+            selection.removeRange(range);
+        });
+
+        if (container.classList.contains("highlight")) {
+            container.appendChild(copybutton);
+        } else if (container.parentNode.firstChild == container) {
+
+        } else if (codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.nodeName == "TABLE") {
+
+            codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.appendChild(copybutton);
+        } else {
+
+            codeblock.parentNode.appendChild(copybutton);
+        }
+    });
+</script>
+</body>
+</html>

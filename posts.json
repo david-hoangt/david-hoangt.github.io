@@ -1,5 +1,14 @@
 [
   {
+    "slug": "2026-05-06-positional-encoding",
+    "title": "Positional Encoding: How Transformers Learn Where Tokens Sit",
+    "date": "2026-05-06",
+    "summary": "From sinusoids to RoPE to NoPE — how transformers know where each token sits. Building Absolute PE, Sinusoidal, Learned, Relative PE, ALiBi, RoPE, p-RoPE, and NoPE from scratch in PyTorch. Six explicit position schemes plus the no-PE hybrid that ships in SmolLM3 and Gemma 4.",
+    "tags": ["transformer", "attention", "positional-encoding", "deep-learning", "long-read"],
+    "readingTime": "30 min",
+    "author": "David Hoang"
+  },
+  {
     "slug": "2026-04-09-attn-variant",
     "title": "Attention Variants: From Self-Attention to GQA, MLA, SWA, and Beyond",
     "date": "2026-04-09",
