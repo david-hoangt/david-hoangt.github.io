@@ -376,7 +376,9 @@
 <p>Each of our 7 tokens <em>&ldquo;The CEO announced record earnings on Friday&rdquo;</em> has a 64-dim embedding (<code>d_model = 64</code>). If &ldquo;announced&rdquo; appeared again at position 5, the embedding table alone would not know which occurrence was which. How do you stamp each position with a unique signature that the model can learn from?</p>
 <p>The simplest answer is to add a position-dependent vector directly to the token embedding before it enters the transformer.</p>
 <figure>
-    <img src="3.%20positional_encoding/asset/eq_01_absolute.png" alt="Equation: x_i equals token_embedding_i plus PE(i) — the position-aware input is the sum of the token embedding and a position-dependent vector" />
+$$
+x_i = \text{token\_embedding}_i + \mathrm{PE}(i)
+$$
 </figure>
 <ul>
 <li><strong>token_embedding_i</strong>: the token&rsquo;s learned embedding</li>
@@ -388,7 +390,12 @@
 <h2 id="sinusoidal-encoding">Sinusoidal Encoding (Vaswani et al., 2017)<a hidden class="anchor" aria-hidden="true" href="#sinusoidal-encoding">#</a></h2>
 <p>The original Transformer used deterministic sine and cosine functions at different frequencies to generate position vectors, no learned parameters needed.</p>
 <figure>
-    <img src="3.%20positional_encoding/asset/eq_02_sinusoidal.png" alt="Equations: PE(pos, 2k) = sin(pos / 10000^(2k / d_model)) and PE(pos, 2k+1) = cos(pos / 10000^(2k / d_model))" />
+$$
+\begin{aligned}
+\mathrm{PE}(pos,\, 2k)   &= \sin\!\left(\frac{pos}{10000^{\,2k/d_{model}}}\right) \\[4pt]
+\mathrm{PE}(pos,\, 2k{+}1) &= \cos\!\left(\frac{pos}{10000^{\,2k/d_{model}}}\right)
+\end{aligned}
+$$
 </figure>
 <ul>
 <li><strong>pos</strong>: token position in the sequence (0, 1, 2, &hellip;)</li>
@@ -398,7 +405,7 @@
 </ul>
 <p>For our 7-token sentence with <code>d_model = 64</code>, this produces a <code>[7, 64]</code> matrix where each row is a unique position fingerprint. &ldquo;The&rdquo; at position 0 gets <code>PE(0)</code>, &ldquo;CEO&rdquo; gets <code>PE(1)</code>, and so on.</p>
 <figure>
-    <img src="3.%20positional_encoding/asset/sinusoidal_pe_animation.gif" alt="Animation: sinusoidal PE for T = 128, d_model = 64. Fast dimensions cycle every few tokens; slow dimensions barely move, carrying coarse position over long contexts." style="width: 100%; max-width: 900px;" />
+    <img src="asset/sinusoidal_pe_animation.gif" alt="Animation: sinusoidal PE for T = 128, d_model = 64. Fast dimensions cycle every few tokens; slow dimensions barely move, carrying coarse position over long contexts." style="width: 100%; max-width: 900px;" />
 <figcaption>Animation: sinusoidal PE for <code>T = 128</code>, <code>d_model = 64</code>. Fast dimensions cycle every few tokens; slow dimensions barely move, carrying coarse position over long contexts.</figcaption>
 </figure>
 <ul>
@@ -407,13 +414,13 @@
 <li><strong>The wavelength spectrum spans from <code>2&pi;</code> up toward <code>10000 * 2&pi;</code></strong>: dimension 0 completes a full cycle every ~6 positions, dimension 63 barely moves across the entire sequence</li>
 </ul>
 <figure>
-    <img src="3.%20positional_encoding/asset/sinusoidal_pe.png" alt="Sinusoidal positional encoding heatmap" />
+    <img src="asset/sinusoidal_pe.png" alt="Sinusoidal positional encoding heatmap" />
 </figure>
 <figure>
-    <img src="3.%20positional_encoding/asset/base_wavelength.png" alt="Wavelength spectrum across dimension pairs" />
+    <img src="asset/base_wavelength.png" alt="Wavelength spectrum across dimension pairs" />
 </figure>
 <figure>
-    <img src="3.%20positional_encoding/asset/distance_monotonicity.png" alt="Distance monotonicity property of sinusoidal PE" />
+    <img src="asset/distance_monotonicity.png" alt="Distance monotonicity property of sinusoidal PE" />
 </figure>
 <p><strong>Why sinusoids?</strong> Vaswani et al. chose them because a fixed offset is representable by a linear transform: for each sine/cosine pair, <code>PE(pos + k)</code> is just <code>PE(pos)</code> rotated by an angle determined by <code>k</code>. In principle, this lets the model learn relative patterns like &ldquo;3 positions to the left.&rdquo;</p>
 
@@ -479,7 +486,9 @@ class LearnedPE(nn.Module):
 <h1 id="relative-positional-encoding">Relative Positional Encoding<a hidden class="anchor" aria-hidden="true" href="#relative-positional-encoding">#</a></h1>
 <p>If &ldquo;CEO announced&rdquo; appears at positions 1-2 in one sentence and at 50-51 in another, the model should recognize the same relationship without relearning it from new absolute coordinates. Shaw et al. introduced this approach in <em>&ldquo;Self-Attention with Relative Position Representations&rdquo;</em> (NAACL 2018): instead of adding position to the <em>input</em>, add it to the <em>attention scores</em>.</p>
 <figure>
-    <img src="3.%20positional_encoding/asset/eq_03_relative.png" alt="Equation: score(i, j) = q_i · k_j + q_i · a^K_{j-i}. The attention score combines the standard content-based dot product with an additional term that depends on the signed relative offset between query position i and key position j" />
+$$
+\mathrm{score}(i,\, j) = q_i \cdot k_j + q_i \cdot a^K_{j-i}
+$$
 </figure>
 <ul>
 <li><strong>q_i @ k_j</strong>: the standard content-based attention score</li>
@@ -491,7 +500,7 @@ class LearnedPE(nn.Module):
 <h2 id="the-clipping-mechanism">The Clipping Mechanism<a hidden class="anchor" aria-hidden="true" href="#the-clipping-mechanism">#</a></h2>
 <p>Shaw et al. clipped relative positions to a range <code>[-K, K]</code>, arguing that precise relative offset beyond a certain magnitude doesn&rsquo;t matter much; &ldquo;10 tokens to the left&rdquo; and &ldquo;15 tokens to the left&rdquo; carry roughly the same signal.</p>
 <figure>
-    <img src="3.%20positional_encoding/asset/rel_pe_clip.png" alt="7×7 relative position matrix for the running example tokens with clipping K=2. Diagonal cells = 0. Cells above diagonal show positive signed offsets clipped to +2. Cells below diagonal show negative signed offsets clipped to -2. Most off-diagonal values saturate at ±2, demonstrating that only 5 unique embeddings (-2, -1, 0, +1, +2) are needed regardless of sequence length" />
+    <img src="asset/rel_pe_clip.png" alt="7×7 relative position matrix for the running example tokens with clipping K=2. Diagonal cells = 0. Cells above diagonal show positive signed offsets clipped to +2. Cells below diagonal show negative signed offsets clipped to -2. Most off-diagonal values saturate at ±2, demonstrating that only 5 unique embeddings (-2, -1, 0, +1, +2) are needed regardless of sequence length" />
 </figure>
 <ul>
 <li><strong>Diagonal = 0</strong>: each token&rsquo;s offset to itself</li>
@@ -573,7 +582,9 @@ class LearnedPE(nn.Module):
 <h1 id="alibi">Attention with Linear Biases (ALiBi)<a hidden class="anchor" aria-hidden="true" href="#alibi">#</a></h1>
 <p>ALiBi is the simplest score-side relative position scheme: no learned distance embeddings, no buckets, no sinusoids. Press, Smith, and Lewis proposed it in <em>&ldquo;Train Short, Test Long&rdquo;</em> (ICLR 2022): subtract a fixed linear penalty from attention scores, proportional to query-key distance. Each head gets one scalar slope.</p>
 <figure>
-    <img src="3.%20positional_encoding/asset/eq_04_alibi.png" alt="Equation: ALiBi_score(i, j) = q_i · k_j − m · |i − j|. The standard content-based score has a fixed linear penalty subtracted from it, where m is a head-specific slope and |i − j| is the absolute distance between query and key positions" />
+$$
+\text{ALiBi\_score}(i,\, j) = q_i \cdot k_j - m \,|i - j|
+$$
 </figure>
 <ul>
 <li><strong>q_i @ k_j</strong>: standard content-based attention score</li>
@@ -599,7 +610,7 @@ class LearnedPE(nn.Module):
     -2m     -m       0      -inf    -inf    -inf   -inf</code></pre>
 <p>The full effective <code>[7, 7]</code> causal bias matrix, applied identically at every layer:</p>
 <figure>
-    <img src="3.%20positional_encoding/asset/alibi_bias_matrix.png" alt="7×7 ALiBi bias matrix for the running example tokens, with causal mask applied. Lower triangle: linear penalty −m × |i-j| from 0 at the diagonal to −6m at the bottom-left corner. Upper triangle: future positions masked by causal mask, shown as −∞" />
+    <img src="asset/alibi_bias_matrix.png" alt="7×7 ALiBi bias matrix for the running example tokens, with causal mask applied. Lower triangle: linear penalty −m × |i-j| from 0 at the diagonal to −6m at the bottom-left corner. Upper triangle: future positions masked by causal mask, shown as −∞" />
 </figure>
 <p>For decoder-only language models, ALiBi is paired with a causal mask. Future positions are <code>-inf</code> before softmax, so only the lower triangle contributes. The symmetric <code>|i - j|</code> formulation is an implementation convenience: precompute the full distance matrix, then let the causal mask handle future tokens separately.</p>
 
@@ -614,10 +625,10 @@ slopes = [2^(-1), 2^(-2), 2^(-3), 2^(-4), 2^(-5), 2^(-6), 2^(-7), 2^(-8)]
 <li>For power-of-two <code>n_heads</code>, the first slope and common ratio are both <code>2^(-8/n_heads)</code></li>
 </ul>
 <figure>
-    <img src="3.%20positional_encoding/asset/alibi_bias.png" alt="ALiBi penalty curves for 8 attention heads: each head gets a different geometric slope from m=1/2 (Head 0, steep recency bias) to m=1/256 (Head 7, gentle long-range decay)" />
+    <img src="asset/alibi_bias.png" alt="ALiBi penalty curves for 8 attention heads: each head gets a different geometric slope from m=1/2 (Head 0, steep recency bias) to m=1/256 (Head 7, gentle long-range decay)" />
 </figure>
 <figure>
-    <img src="3.%20positional_encoding/asset/alibi_head.png" alt="ALiBi per-head slope visualization" />
+    <img src="asset/alibi_head.png" alt="ALiBi per-head slope visualization" />
 </figure>
 
 <h2 id="train-short-test-long">Train Short, Test Long<a hidden class="anchor" aria-hidden="true" href="#train-short-test-long">#</a></h2>
@@ -699,7 +710,13 @@ slopes = [2^(-1), 2^(-2), 2^(-3), 2^(-4), 2^(-5), 2^(-6), 2^(-7), 2^(-8)]
 <h1 id="rope">Rotary Positional Encoding (RoPE)<a hidden class="anchor" aria-hidden="true" href="#rope">#</a></h1>
 <p>ALiBi keeps position as an additive score-side bias: content score first, distance penalty second. RoPE takes a different route. Su et al. proposed it in <em>&ldquo;RoFormer: Enhanced Transformer with Rotary Position Embedding&rdquo;</em> (2021): instead of adding a bias after the dot product, rotate the query and key vectors before the dot product, so content and relative position interact inside the score itself.</p>
 <figure>
-    <img src="3.%20positional_encoding/asset/eq_05_rope_highlevel.png" alt="Equations: q_rotated = rotate(q, pos_q), k_rotated = rotate(k, pos_k), score = q_rotated · k_rotated. RoPE rotates Q and K by their absolute positions; the dot product of rotated vectors then encodes the relative position" />
+$$
+\begin{aligned}
+q_{\text{rotated}} &= \mathrm{rotate}(q,\, pos_q) \\
+k_{\text{rotated}} &= \mathrm{rotate}(k,\, pos_k) \\
+\mathrm{score} &= q_{\text{rotated}} \cdot k_{\text{rotated}}
+\end{aligned}
+$$
 </figure>
 <ul>
 <li><code>rotate(q, pos)</code> rotates pairs of dimensions by <code>pos * theta_k</code></li>
@@ -710,7 +727,13 @@ slopes = [2^(-1), 2^(-2), 2^(-3), 2^(-4), 2^(-5), 2^(-6), 2^(-7), 2^(-8)]
 <h2 id="the-rotation-mechanism">The Rotation Mechanism<a hidden class="anchor" aria-hidden="true" href="#the-rotation-mechanism">#</a></h2>
 <p>RoPE groups the <code>d_k</code> dimensions into pairs and rotates each pair in a 2D plane. Pair <code>k</code> rotates by angle <code>pos * theta_k</code>:</p>
 <figure>
-    <img src="3.%20positional_encoding/asset/eq_06_rope_rotation.png" alt="Equations for RoPE rotation of dimension pair (2k, 2k+1): q'[2k] = q[2k]·cos(pos·θ_k) − q[2k+1]·sin(pos·θ_k); q'[2k+1] = q[2k]·sin(pos·θ_k) + q[2k+1]·cos(pos·θ_k); where θ_k = 1 / 10000^(2k / d_k). This is a 2D rotation by angle pos·θ_k applied to each dimension pair" />
+$$
+\begin{aligned}
+q'[2k]     &= q[2k]\cos(pos\cdot\theta_k) - q[2k{+}1]\sin(pos\cdot\theta_k) \\
+q'[2k{+}1] &= q[2k]\sin(pos\cdot\theta_k) + q[2k{+}1]\cos(pos\cdot\theta_k) \\
+\text{where}\quad \theta_k &= \frac{1}{10000^{\,2k/d_k}}
+\end{aligned}
+$$
 </figure>
 <ul>
 <li><strong>Same frequency formula as sinusoidal PE</strong>: but applied as <em>rotation</em> to Q/K, not <em>addition</em> to embeddings</li>
@@ -719,14 +742,16 @@ slopes = [2^(-1), 2^(-2), 2^(-3), 2^(-4), 2^(-5), 2^(-6), 2^(-7), 2^(-8)]
 </ul>
 <p>For &ldquo;CEO&rdquo; at position 1, each dimension pair in its query vector gets rotated by <code>1 * &theta;_k</code>. For &ldquo;announced&rdquo; at position 2, the same pairs rotate by <code>2 * &theta;_k</code>. When you dot-product them, the angle that matters is <code>(2 - 1) * &theta;_k = &theta;_k</code>, the signed relative offset (it carries direction, unlike ALiBi&rsquo;s symmetric <code>|i - j|</code>).</p>
 <figure>
-    <img src="3.%20positional_encoding/asset/rope_rotation.png" alt="RoPE rotation pipeline diagram. Left: query vector q with shape [batch, n_heads, T, d_k]. Middle: 3 representative dimension pair rotations. Right: rotated output q' with same shape" />
+    <img src="asset/rope_rotation.png" alt="RoPE rotation pipeline diagram. Left: query vector q with shape [batch, n_heads, T, d_k]. Middle: 3 representative dimension pair rotations. Right: rotated output q' with same shape" />
     <figcaption>Values shown for <code>d_k = 16</code>, matches our running example (<code>d_model = 64</code>, <code>n_heads = 4</code> &rarr; <code>d_k = d_model / n_heads = 16</code>). Each pair <code>k</code> rotates at <code>&theta;_k = 1 / 10000^(2k / d_k)</code>; the wavelength <code>2&pi; / &theta;_k</code> says how many positions complete one full cycle. Pair 0 cycles every ~6 tokens (useful for local order), pair 7 barely moves across 20K positions, preserving content with little positional distortion over short contexts.</figcaption>
 </figure>
 
 <h2 id="why-the-dot-product-encodes-relative-position">Why the Dot Product Encodes Relative Position<a hidden class="anchor" aria-hidden="true" href="#why-the-dot-product-encodes-relative-position">#</a></h2>
 <p>The core mathematical property: when you dot-product two vectors rotated in the same 2D plane, the rotation angles <em>subtract</em>.</p>
 <figure>
-    <img src="3.%20positional_encoding/asset/eq_07_rope_dot.png" alt="Equation: rotate(q, pos_q) · rotate(k, pos_k) = f(q, k, pos_q − pos_k). The dot product of the rotated query and key depends only on the difference in their positions, not on the absolute positions themselves" />
+$$
+\mathrm{rotate}(q,\, pos_q) \cdot \mathrm{rotate}(k,\, pos_k) = f(q,\, k,\, pos_q - pos_k)
+$$
 </figure>
 <ul>
 <li>The positional part of the dot product depends on <code>pos_q - pos_k</code>; the full score still depends on the content of <code>q</code> and <code>k</code></li>
@@ -742,14 +767,19 @@ slopes = [2^(-1), 2^(-2), 2^(-3), 2^(-4), 2^(-5), 2^(-6), 2^(-7), 2^(-8)]
 <li><strong>Low-frequency dimensions</strong> (high <code>k</code>, slow rotation): the paper <em>suspects</em> these carry more <em>semantic</em> information, since their rotation changes slowly enough over normal context lengths that content is less distorted</li>
 </ul>
 <figure>
-    <img src="3.%20positional_encoding/asset/rope_bands.png" alt="Scatter plot of RoPE dimension index vs activation norm showing two functional bands: high-frequency dimensions cluster as positional channels, low-frequency dimensions are suspected to carry more content/semantic information" />
+    <img src="asset/rope_bands.png" alt="Scatter plot of RoPE dimension index vs activation norm showing two functional bands: high-frequency dimensions cluster as positional channels, low-frequency dimensions are suspected to carry more content/semantic information" />
 </figure>
 <p>This division works well for short-to-medium contexts. But at very long sequences, even low-frequency dimensions can accumulate enough phase drift to interfere with the content information stored there.</p>
 
 <h2 id="context-length-extension">Context Length Extension<a hidden class="anchor" aria-hidden="true" href="#context-length-extension">#</a></h2>
 <p>RoPE&rsquo;s base <code>theta_base</code> controls the wavelength spectrum. Larger bases lower the frequencies, so rotations accumulate more slowly across distance:</p>
 <figure>
-    <img src="3.%20positional_encoding/asset/eq_08_rope_theta_extension.png" alt="Equations comparing RoPE base values. Standard base: θ_k = 1 / 10000^(2k / d_k), shorter wavelengths and faster rotation. Larger long-context base: θ_k = 1 / 1000000^(2k / d_k), longer wavelengths and slower rotation" />
+$$
+\begin{aligned}
+\text{Standard base:} &\quad \theta_k = \frac{1}{10000^{\,2k/d_k}} \\[4pt]
+\text{Long-context base:} &\quad \theta_k = \frac{1}{1000000^{\,2k/d_k}}
+\end{aligned}
+$$
 </figure>
 <ul>
 <li><strong>Higher base &rarr; lower frequencies &rarr; slower rotation</strong>, which can support longer context when paired with the right training or scaling method</li>
@@ -831,7 +861,7 @@ scores = torch.matmul(q_rot, k_rot.transpose(-2, -1)) / math.sqrt(d_k)</code></p
   first 25% of head dims: RoPE rotation applied
   remaining 75%:          no RoPE rotation</code></pre>
 <figure>
-    <img src="3.%20positional_encoding/asset/p_rope_rotation.png" alt="Illustrative p-RoPE split for 64 dimension pairs. Top row: standard RoPE rotates all 64 pairs from fast to slow frequencies. Bottom row: p-RoPE with p=0.25 rotates only the first 16 high-frequency pairs and leaves the remaining 48 pairs position-free with no RoPE rotation" />
+    <img src="asset/p_rope_rotation.png" alt="Illustrative p-RoPE split for 64 dimension pairs. Top row: standard RoPE rotates all 64 pairs from fast to slow frequencies. Bottom row: p-RoPE with p=0.25 rotates only the first 16 high-frequency pairs and leaves the remaining 48 pairs position-free with no RoPE rotation" />
 </figure>
 <ul>
 <li><strong>Standard RoPE</strong>: every dimension pair rotates, from fast to slow frequencies</li>
@@ -845,14 +875,19 @@ scores = torch.matmul(q_rot, k_rot.transpose(-2, -1)) / math.sqrt(d_k)</code></p
 <p>p-RoPE bets that 75% of dimensions can run without explicit position information, and Gemma 4 ships on that bet. If some dimensions survive without explicit position, can a whole layer do the same?</p>
 <p>Haviv et al. showed in <em>&ldquo;Transformer Language Models without Positional Encodings Still Learn Positional Information&rdquo;</em> (EMNLP Findings, 2022) that causal decoder-only transformers trained with <em>no</em> positional encoding are competitive with standard models. Kazemnejad et al. (<em>&ldquo;The Impact of Positional Encoding on Length Generalization in Transformers&rdquo;</em>, NeurIPS 2023) went further: on algorithmic tasks (addition, sorting, polynomial evaluation), NoPE outperforms all explicit PE methods at length generalization. On general language modeling, NoPE is competitive but not dominant, which is why the practical frontier is hybrid, not pure NoPE.</p>
 <figure>
-    <img src="3.%20positional_encoding/asset/eq_09_nope.png" alt="Equations comparing standard transformer and NoPE input. Standard: x = token_embedding + PE(position). NoPE: x = token_embedding. NoPE skips adding any position vector to the input embeddings" />
+$$
+\begin{aligned}
+\text{Standard:} &\quad x = \text{token\_embedding} + \mathrm{PE}(\text{position}) \\
+\text{NoPE:} &\quad x = \text{token\_embedding}
+\end{aligned}
+$$
 </figure>
 <p>No PE addition, no rotation, no bias. Just token embeddings into the attention layers.</p>
 
 <h2 id="why-it-works">Why It Works: The Causal Mask Provides a Position Cue<a hidden class="anchor" aria-hidden="true" href="#why-it-works">#</a></h2>
 <p>In a causal (autoregressive) transformer, the attention mask reveals position implicitly:</p>
 <figure>
-    <img src="3.%20positional_encoding/asset/nope_causal_mask.png" alt="7×7 causal mask for the running example tokens. Lower-triangular pattern with row counts annotated on the right: 'The' attends to 1 token, 'CEO' to 2, 'announced' to 3, ... up to 'Friday' attending to all 7. Each row has a unique number of visible cells, giving the model an implicit position cue" />
+    <img src="asset/nope_causal_mask.png" alt="7×7 causal mask for the running example tokens. Lower-triangular pattern with row counts annotated on the right: 'The' attends to 1 token, 'CEO' to 2, 'announced' to 3, ... up to 'Friday' attending to all 7. Each row has a unique number of visible cells, giving the model an implicit position cue" />
 </figure>
 <ul>
 <li><strong>&ldquo;The&rdquo; attends to 1 token</strong> &rarr; the model infers &ldquo;I am position 0&rdquo;</li>
@@ -900,7 +935,7 @@ scores = torch.matmul(q_rot, k_rot.transpose(-2, -1)) / math.sqrt(d_k)</code></p
 <h2 id="why-plain-nope-does-not-work-for-encoders">Why Plain NoPE Does Not Work for Encoders<a hidden class="anchor" aria-hidden="true" href="#why-plain-nope-does-not-work-for-encoders">#</a></h2>
 <p>This only works because the causal mask is asymmetric. In a bidirectional encoder (BERT-style), every token attends to every other token, the mask is all 1s. &ldquo;CEO&rdquo; at position 1 sees the same set of keys as &ldquo;CEO&rdquo; at position 4. No implicit position signal exists, so explicit PE remains necessary.</p>
 <figure>
-    <img src="3.%20positional_encoding/asset/nope_masks.png" alt="Side-by-side 7×7 attention mask comparison for the running example tokens. Left (Causal Attention - Decoder): lower-triangular pattern, row counts grow 1, 2, 3, 4, 5, 6, 7. Right (Bidirectional Attention - Encoder): full all-ones matrix, every row has count 7" />
+    <img src="asset/nope_masks.png" alt="Side-by-side 7×7 attention mask comparison for the running example tokens. Left (Causal Attention - Decoder): lower-triangular pattern, row counts grow 1, 2, 3, 4, 5, 6, 7. Right (Bidirectional Attention - Encoder): full all-ones matrix, every row has count 7" />
 </figure>
 
 <h2 id="the-hybrid-rope-nope">The Hybrid: RoPE + NoPE<a hidden class="anchor" aria-hidden="true" href="#the-hybrid-rope-nope">#</a></h2>
@@ -916,7 +951,7 @@ scores = torch.matmul(q_rot, k_rot.transpose(-2, -1)) / math.sqrt(d_k)</code></p
 <p>They report stronger long-context retrieval and lower training/inference cost than full-RoPE baselines: RoPE layers use sliding-window attention for local work, while NoPE layers keep full attention for retrieval.</p>
 <p>SmolLM3 (HuggingFace, 3B) adopted this pattern: RoPE on 3 out of every 4 layers, NoPE on the 4th.</p>
 <figure>
-    <img src="3.%20positional_encoding/asset/sw_vs_global.png" alt="Sliding window vs global attention pattern visualization for the RoPE+NoPE hybrid layer schedule" />
+    <img src="asset/sw_vs_global.png" alt="Sliding window vs global attention pattern visualization for the RoPE+NoPE hybrid layer schedule" />
 </figure>
 
 <h2 id="nope-gotchas">Gotchas and Trade-offs<a hidden class="anchor" aria-hidden="true" href="#nope-gotchas">#</a></h2>
@@ -967,6 +1002,16 @@ scores = torch.matmul(q_rot, k_rot.transpose(-2, -1)) / math.sqrt(d_k)</code></p
       <li><a href="../../tags/long-read/">long-read</a></li>
     </ul>
 <nav class="paginav">
+  <a class="prev" href="../../posts/2026-04-09-attn-variant/">
+    <span class="title">&laquo; </span>
+    <br>
+    <span>Attention Variants: From Self-Attention to GQA, MLA, SWA, and Beyond</span>
+  </a>
+  <a class="next" href="../../posts/2026-06-09-normalization/">
+    <span class="title"> &raquo;</span>
+    <br>
+    <span>Normalization: From BatchNorm to RMSNorm to Nothing</span>
+  </a>
 </nav>
 
 

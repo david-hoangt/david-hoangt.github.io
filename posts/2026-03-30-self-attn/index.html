@@ -329,7 +329,7 @@
 
   <div class="post-content"><p>The single equation that changed NLP shipped in 2017 inside <em>Attention Is All You Need</em> (<a href="https://arxiv.org/abs/1706.03762">Vaswani et al.</a>). Scaled dot-product self-attention replaced recurrence, convolution, and alignment models with one operation. Every LLM since, from GPT to DeepSeek, runs on variants of it.</p>
 <figure>
-    <img src="self-attn/self-attn/image.png" />
+    <img src="asset/image.png" />
     <figcaption>&ldquo;Attention is All You Need&rdquo; paper (<a href="https://arxiv.org/abs/1706.03762">https://arxiv.org/abs/1706.03762</a>)</figcaption>
 </figure>
 <p>By the end of this post you will have built, from scratch in PyTorch, working implementations of Self-Attention, Multi-Head Attention, Causal Self-Attention, and Cross-Attention, the four building blocks that power every transformer.</p>
@@ -352,7 +352,7 @@
 </ul>
 <p>Two tokens interact strongly when their query-key dot product is high. &ldquo;announced&rdquo; is looking for a subject, and &ldquo;CEO&rdquo; advertises exactly that. The diagram below shows this three-way split from a single input embedding:</p>
 <figure>
-    <img src="self-attn/self-attn/image%201.png" />
+    <img src="asset/image%201.png" />
 </figure>
 <p><em>In practice (and in all implementations below), we set <code>d_v = d_k</code>. The math generalizes to <code>d_v &ne; d_k</code>, but most architectures use equal dimensions for simplicity.</em></p>
 <h2 id="scaled-dot-product-attention">Scaled Dot-Product Attention<a hidden class="anchor" aria-hidden="true" href="#scaled-dot-product-attention">#</a></h2>
@@ -367,7 +367,7 @@
 <p>Without scaling, each element in <code>Q @ K.T</code> is a sum of <code>d_k</code> products; variance grows linearly with <code>d_k</code>, pushing softmax into near-one-hot regions where gradients vanish. Divide by <code>sqrt(d_k)</code> to keep the distribution smooth. Multiply by V to produce the final output: each token&rsquo;s new representation is a weighted mix of all values.</p>
 <p>In our 7-token example, the attention matrix is <code>[1, 7, 7]</code>. The row for &ldquo;announced&rdquo; peaks on &ldquo;CEO&rdquo; (subject) and &ldquo;earnings&rdquo; (object).</p>
 <figure>
-    <img src="self-attn/self-attn/image%202.png" />
+    <img src="asset/image%202.png" />
 </figure>
 <p>That&rsquo;s the full mechanism. Translating it into code is straightforward.</p>
 <h2 id="implementation-from-scratch">Implementation from Scratch<a hidden class="anchor" aria-hidden="true" href="#implementation-from-scratch">#</a></h2>
@@ -392,7 +392,7 @@
 <h2 id="computational-cost">Computational Cost<a hidden class="anchor" aria-hidden="true" href="#computational-cost">#</a></h2>
 <p>Complexity: <code>O(n&sup2; &times; d)</code> time and memory. A 4,096-token sequence &rarr; ~16.8M entries per head per layer. At 128k tokens &rarr; ~16.4B. This quadratic scaling motivates every efficiency variant (such as sparse attention, Flash Attention, etc). The chart below shows how the attention matrix grows with sequence length:</p>
 <figure>
-    <img src="self-attn/self-attn/image%203.png" />
+    <img src="asset/image%203.png" />
 </figure>
 <h2 id="key-takeaways">Key Takeaways<a hidden class="anchor" aria-hidden="true" href="#key-takeaways">#</a></h2>
 <p>Self-attention projects each token into Q, K, V spaces, computes scaled dot-product scores, and outputs a weighted combination of all value vectors, making every token&rsquo;s new representation a function of the entire sequence. It&rsquo;s the atomic unit of transformer attention, used in every encoder (BERT, ViT, T5 encoder) and as the core of every decoder. Powerful all-to-all connectivity at <code>O(n&sup2;)</code> time and memory cost.</p>
@@ -410,7 +410,7 @@ Output = Concat(head_1, ..., head_h) @ W_O</code></pre>
 </ul>
 <p>Each head computes scaled dot-product attention in its own <code>d_k</code>-dimensional subspace. One learns subject-verb links (&ldquo;announced&rdquo; &rarr; &ldquo;CEO&rdquo;), another temporal relations (&ldquo;announced&rdquo; &rarr; &ldquo;Friday&rdquo;). <code>W_O</code> mixes these patterns into a unified representation. The diagram below traces data through all three stages:</p>
 <figure>
-    <img src="self-attn/self-attn/image%204.png" />
+    <img src="asset/image%204.png" />
 </figure>
 <h2 id="the-dimension-split">The Dimension Split<a hidden class="anchor" aria-hidden="true" href="#the-dimension-split">#</a></h2>
 <p>A natural question: doesn&rsquo;t running <em>h</em> heads cost h times more? No. Each head works in <code>d_k = d_model / h</code>, not full <code>d_model</code>. With <code>d_model = 64</code> and <code>h = 4</code>: each head is 16-dimensional. Total parameters across all heads &asymp; one full-dimensional head. MHA is a better allocation of the same compute budget, not a more expensive one.</p>
@@ -454,7 +454,7 @@ M[i][j] = -inf    if j &gt; i</code></pre>
 <p>In our 7-token example, &ldquo;CEO&rdquo; (position 1, 0-indexed) sees only [&ldquo;The&rdquo;, &ldquo;CEO&rdquo;]. &ldquo;Friday&rdquo; (position 6) sees the full sequence. The attention matrix is lower-triangular: 28 active entries out of 49.</p>
 <p>Concretely: when generating &ldquo;The CEO announced ___&rdquo;, position 3 attends only to [&ldquo;The&rdquo;, &ldquo;CEO&rdquo;, &ldquo;announced&rdquo;]. It cannot see &ldquo;record&rdquo; at position 4 or &ldquo;Friday&rdquo; at position 6. If position 3 could peek at position 5, it would just copy &ldquo;earnings&rdquo; instead of learning to predict it.</p>
 <figure>
-    <img src="self-attn/self-attn/image%205.png" />
+    <img src="asset/image%205.png" />
 </figure>
 <p>The mask handles training and shapes. But at inference time, the causal constraint unlocks a major optimization.</p>
 <h2 id="kv-cache-and-inference-cost">KV Cache and Inference Cost<a hidden class="anchor" aria-hidden="true" href="#kv-cache-and-inference-cost">#</a></h2>
@@ -468,7 +468,7 @@ M[i][j] = -inf    if j &gt; i</code></pre>
 </ul>
 <p>This linear-in-T memory scaling is the dominant inference bottleneck. It&rsquo;s why long conversations slow down and why providers charge per-token. It drives GQA (share K/V across head groups) and MLA (compress K/V into a low-rank latent). The chart below shows KV cache memory scaling with sequence length:</p>
 <figure>
-    <img src="self-attn/self-attn/image%206.png" />
+    <img src="asset/image%206.png" />
 </figure>
 <p><em>Gotcha: many heads assign disproportionate weight to the first token. Under the causal mask, it&rsquo;s the only position visible to all others, acting as a default &ldquo;sink&rdquo; for leftover attention mass (see StreamingLLM).</em></p>
 <h2 id="implementation-from-scratch-2">Implementation from Scratch<a hidden class="anchor" aria-hidden="true" href="#implementation-from-scratch-2">#</a></h2>
@@ -498,7 +498,7 @@ M[i][j] = -inf    if j &gt; i</code></pre>
 <h2 id="the-mechanism">The Mechanism<a hidden class="anchor" aria-hidden="true" href="#the-mechanism">#</a></h2>
 <p>Consider translating &ldquo;The CEO announced record earnings on Friday&rdquo; (7 tokens) into Vietnamese: &ldquo;T&#7893;ng gi&aacute;m &#273;&#7889;c &#273;&atilde; c&ocirc;ng b&#7889; thu nh&#7853;p k&#7927; l&#7909;c v&agrave;o th&#7913; S&aacute;u&rdquo; (13 tokens). The decoder generates the Vietnamese output token by token, and at each step it needs to look back at the English source to decide what to translate next. The two sequences have different lengths: 13 Vietnamese tokens querying 7 English tokens.</p>
 <figure>
-    <img src="self-attn/self-attn/image%2010.png" />
+    <img src="asset/image%2010.png" />
     <figcaption>Each line connects a decoder token (bottom) to an encoder token (top), with thickness proportional to attention weight. Notice the rectangular structure: every decoder token can attend to all encoder tokens &mdash; no causal mask needed since the encoder output is already complete.</figcaption>
 </figure>
 <p>The wiring: Q from one sequence, K/V from the other:</p>
@@ -521,7 +521,7 @@ V = X_KV @ W_V       # from encoder: [batch, seq_len_kv, d_model] -&gt; [batch, 
 </ol>
 <p>The encoder output is computed once and reused by every decoder layer at every generation step. The diagram below shows the full decoder block with all three sub-layers, residual connections, and the encoder output feeding K/V into the cross-attention layer:</p>
 <figure>
-    <img src="self-attn/self-attn/image%208.png" />
+    <img src="asset/image%208.png" />
 </figure>
 <p>This encoder-decoder design powered the original Transformer. But most modern text-only LLMs have moved away from it entirely.</p>
 <h2 id="cross-attention-vs-concatenation">Cross-Attention vs. Concatenation<a hidden class="anchor" aria-hidden="true" href="#cross-attention-vs-concatenation">#</a></h2>
@@ -534,7 +534,7 @@ V = X_KV @ W_V       # from encoder: [batch, seq_len_kv, d_model] -&gt; [batch, 
 <h2 id="implementation-from-scratch-3">Implementation from Scratch<a hidden class="anchor" aria-hidden="true" href="#implementation-from-scratch-3">#</a></h2>
 <p>The data flow diagram below maps directly to the code: X_Q feeds W_Q on the decoder side, X_KV feeds W_K and W_V on the encoder side, and both streams merge at the attention computation. Notice that <code>seq_len_q</code> and <code>seq_len_kv</code> are independent &mdash; 13 and 7 in our translation example &mdash; producing the rectangular matrix from earlier.</p>
 <figure>
-    <img src="self-attn/self-attn/image%207.png" />
+    <img src="asset/image%207.png" />
 </figure>
 <pre tabindex="0"><code class="language-python">class CrossAttention(nn.Module):
     def __init__(self, d_model: int, d_k: int | None = None):
@@ -571,6 +571,11 @@ V = X_KV @ W_V       # from encoder: [batch, seq_len_kv, d_model] -&gt; [batch, 
       <li><a href="../../tags/long-read/">Long-Read</a></li>
     </ul>
 <nav class="paginav">
+  <a class="prev" href="../../posts/2026-03-23-neural-net/">
+    <span class="title">&laquo; </span>
+    <br>
+    <span>Neural Network From Scratch: From One Neuron to a Tiny MLP in NumPy</span>
+  </a>
   <a class="next" href="../../posts/2026-04-09-attn-variant/">
     <span class="title"> &raquo;</span>
     <br>

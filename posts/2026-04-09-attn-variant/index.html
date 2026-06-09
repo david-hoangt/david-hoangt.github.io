@@ -401,7 +401,7 @@
 <h2 id="the-sharing-mechanism">The Sharing Mechanism<a hidden class="anchor" aria-hidden="true" href="#the-sharing-mechanism">#</a></h2>
 <p>MHA stores 4 separate K/V heads for our 4-head example &mdash; but &ldquo;CEO&rdquo; and &ldquo;announced&rdquo; don&rsquo;t need 4 independent key representations to be found. What if heads share K/V projections?</p>
 <figure>
-    <img src="2.%20attn-variants/asset/gqa_mqa_mha.png" />
+    <img src="asset/gqa_mqa_mha.png" />
     <figcaption>MHA &rarr; GQA &rarr; MQA: progressively fewer KV heads, same 4 query heads. Cache shrinks by the sharing ratio.</figcaption>
 </figure>
 <ul>
@@ -420,7 +420,7 @@ Mapping:       Q_0, Q_1 -&gt; KV_0         — heads 0,1 share K_0, V_0
 <li><strong>Query diversity preserved</strong> &mdash; each query head still has its own W_Q projection</li>
 </ul>
 <figure>
-    <img src="2.%20attn-variants/asset/gqa.png" />
+    <img src="asset/gqa.png" />
     <figcaption>GQA head grouping: 4 query heads mapped to 2 shared KV heads</figcaption>
 </figure>
 
@@ -515,7 +515,7 @@ V = c @ W_up_V                     # decompress for V: [batch, seq_len, n_heads 
 <li><strong>Cache</strong>: 7 latent vectors (7 &times; 16 = 112 elements) instead of full K + V (7 &times; 64 &times; 2 = 896) &mdash; <strong>8x reduction</strong></li>
 </ul>
 <figure>
-    <img src="2.%20attn-variants/asset/mla_cache.png" />
+    <img src="asset/mla_cache.png" />
     <figcaption>Only the latent c is cached &mdash; d_latent &lt;&lt; d_model shrinks KV cache by the compression ratio.</figcaption>
 </figure>
 
@@ -543,7 +543,7 @@ MLA (d_latent=512):  1 * 32 *  1 * 128k * 512 * 2 bytes  = ~4 GB</code></pre>
 </ul>
 <p>Note: absorption only works for the non-RoPE portion of the key. The positional part (<code>qk_rope_head_dim = 64</code>) bypasses the latent and carries RoPE separately &mdash; absorbing through RoPE would break its relative-position property.</p>
 <figure>
-    <img src="2.%20attn-variants/asset/absorb_mla.png" />
+    <img src="asset/absorb_mla.png" />
 </figure>
 
 <h2 id="gotchas-and-trade-offs-1">Gotchas and Trade-offs<a hidden class="anchor" aria-hidden="true" href="#gotchas-and-trade-offs-1">#</a></h2>
@@ -604,7 +604,7 @@ MLA (d_latent=512):  1 * 32 *  1 * 128k * 512 * 2 bytes  = ~4 GB</code></pre>
 </ul>
 <p>With <code>w = 3</code> on our 7-token sentence, &ldquo;Friday&rdquo; (position 6) attends to [&ldquo;earnings&rdquo;, &ldquo;on&rdquo;, &ldquo;Friday&rdquo;] &mdash; positions 4, 5, 6. It cannot see &ldquo;The&rdquo; or &ldquo;CEO&rdquo; directly. But stack two SWA layers and &ldquo;Friday&rdquo; reaches &ldquo;CEO&rdquo; transitively: layer 1 lets &ldquo;record&rdquo; (position 3) see &ldquo;CEO&rdquo; (position 1), and layer 2 lets &ldquo;Friday&rdquo; attend to &ldquo;record&rdquo;&rsquo;s updated representation.</p>
 <figure>
-    <img src="2.%20attn-variants/asset/swa.png" />
+    <img src="asset/swa.png" />
     <figcaption>SWA drops long-range attention (red) &mdash; &lsquo;Friday&rsquo; sees only [&lsquo;earnings&rsquo;, &lsquo;on&rsquo;, &lsquo;Friday&rsquo;], not &lsquo;The&rsquo; or &lsquo;CEO&rsquo;.</figcaption>
 </figure>
 
@@ -615,7 +615,7 @@ Layer 2:  token i sees [i-2w+1, ..., i]  (via layer 1's outputs)
 Layer L:  token i sees [i-Lw+1, ..., i]  (transitively)</code></pre>
 <p>This is the key insight: SWA doesn&rsquo;t limit the model to local context &mdash; it limits <em>per-layer</em> attention while allowing multi-hop propagation across layers.</p>
 <figure>
-    <img src="2.%20attn-variants/asset/swa_propagation.png" />
+    <img src="asset/swa_propagation.png" />
     <figcaption>Each layer extends the receptive field by w positions &mdash; after 3 layers, &lsquo;Friday&rsquo; can see the entire sentence.</figcaption>
 </figure>
 
@@ -707,7 +707,7 @@ GSM8K:      52.2%  vs  16.0% (7B) / 34.3% (13B)</code></pre>
 <li><strong>Sliding window</strong> &mdash; handles local syntax around &ldquo;announced record earnings&rdquo;</li>
 </ul>
 <figure>
-    <img src="2.%20attn-variants/asset/nsa_paths.png" />
+    <img src="asset/nsa_paths.png" />
     <figcaption>Three paths &mdash; coarse global, precise sparse, and local &mdash; combined by a learned gate per head.</figcaption>
 </figure>
 
@@ -723,7 +723,7 @@ Run full attention only on the selected k * b tokens</code></pre>
 <li><strong>Fine-grained attention</strong> &mdash; full dot-product on only the <code>k * b</code> selected tokens per query</li>
 </ul>
 <figure>
-    <img src="2.%20attn-variants/asset/nsa_scorer.png" />
+    <img src="asset/nsa_scorer.png" />
     <figcaption>Score cheaply with block means, then attend precisely to only the top-k selected blocks.</figcaption>
 </figure>
 <p>The paper&rsquo;s specific hyperparameters: compression block <code>l = 32</code> (stride 16), selection block <code>l' = 64</code>, top 16 selected blocks, sliding window <code>w = 512</code>. At 64k context, this delivers <strong>9x forward / 11.6x decoding speedup</strong> while slightly <em>improving</em> quality over full attention (0.456 vs. 0.443 general benchmarks avg, +0.032 on LongBench, +0.054 on AIME 2024 reasoning).</p>
@@ -831,7 +831,7 @@ Run full attention only on the selected k * b tokens</code></pre>
 </ul>
 <p>In our running example, after a few layers &ldquo;The&rdquo; and &ldquo;on&rdquo; are well-established function words &mdash; their gate values drop to ~0.2. Content-rich positions like &ldquo;announced&rdquo; and &ldquo;earnings&rdquo; pass through at ~0.8. The model decides per-position, per-dimension which updates matter.</p>
 <figure>
-    <img src="2.%20attn-variants/asset/gated_attn.png" />
+    <img src="asset/gated_attn.png" />
     <figcaption>The sigmoid gate suppresses uninformative attention outputs before they hit the residual stream.</figcaption>
 </figure>
 
@@ -908,7 +908,7 @@ Layers 4-6:   LinearAttention
 Layer 7:       Full GatedAttention
 ...</code></pre>
 <figure>
-    <img src="2.%20attn-variants/asset/hybrid.png" />
+    <img src="asset/hybrid.png" />
     <figcaption>Hybrid replaces most quadratic layers with O(n) linear layers &mdash; only every 4th layer pays the full cost.</figcaption>
 </figure>
 
@@ -926,7 +926,7 @@ Layer 7:       Full GatedAttention
 <li><strong>At 4096 tokens</strong>: standard needs ~16.8M entries per head; linear stays at 256 &mdash; the crossover pays off when <code>n &gt;&gt; d_k</code></li>
 </ul>
 <figure>
-    <img src="2.%20attn-variants/asset/linear_attn.png" />
+    <img src="asset/linear_attn.png" />
     <figcaption>Linear attention avoids the n &times; n matrix by computing K.T @ V first &mdash; O(n &times; d&sup2;) instead of O(n&sup2; &times; d).</figcaption>
 </figure>
 
@@ -1023,7 +1023,7 @@ OLMo 2:      Gated attention + QK-Norm + full causal
 Jamba:        MHA + linear attention (hybrid 7:1 ratio)</code></pre>
 <p>GQA for cache reduction, SWA for local layers, gating for output control, full attention where global context is critical. The equation is always <code>softmax(Q @ K.T / sqrt(d_k)) @ V</code> &mdash; only the wiring, masks, and compression change.</p>
 <figure>
-    <img src="2.%20attn-variants/asset/together.png" />
+    <img src="asset/together.png" />
     <figcaption>Start from the bottleneck, not the mechanism. Most models combine 2-3 variants.</figcaption>
 </figure>
 <p>Same shapes, same scaling, same softmax. Only the wiring changes.</p>
@@ -1044,6 +1044,11 @@ Jamba:        MHA + linear attention (hybrid 7:1 ratio)</code></pre>
     <span class="title">&laquo; </span>
     <br>
     <span>The Mechanics of Attention: Self, Multi-Head, Causal, and Cross</span>
+  </a>
+  <a class="next" href="../../posts/2026-05-06-positional-encoding/">
+    <span class="title"> &raquo;</span>
+    <br>
+    <span>Positional Encoding: How Transformers Learn Where Tokens Sit</span>
   </a>
 </nav>
 

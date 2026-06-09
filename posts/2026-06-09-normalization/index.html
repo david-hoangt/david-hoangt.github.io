@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>Normalization: From BatchNorm to RMSNorm to Nothing | David&#39;s Whiteboard</title>
+<meta name="keywords" content="transformer, normalization, layernorm, rmsnorm, deep-learning, long-read" />
+<meta name="description" content="How transformers tame their activations, and why every generation stripped more out. Building BatchNorm, LayerNorm, RMSNorm, Pre/Post/Peri-Norm placement, QK-Norm, and DyT from scratch in PyTorch.">
+<meta name="author" content="David Hoang">
+<link rel="canonical" href="../../posts/2026-06-09-normalization/" />
+<link crossorigin="anonymous" href="../../assets/css/stylesheet.min.51b2420ff5ea1215cdf584af7ba59d5fea94201c33f25109d6448c7271631316.css" integrity="sha256-UbJCD/XqEhXN9YSve6WdX&#43;qUIBwz8lEJ1kSMcnFjExY=" rel="preload stylesheet" as="style">
+<script defer crossorigin="anonymous" src="../../assets/js/highlight.min.2eadbb982468c11a433a3e291f01326f2ba43f065e256bf792dbd79640a92316.js" integrity="sha256-Lq27mCRowRpDOj4pHwEybyukPwZeJWv3ktvXlkCpIxY="
+    onload="hljs.initHighlightingOnLoad();"></script>
+<link rel="icon" href="../../favicon_coffee.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="../../favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="../../favicon-32x32.png">
+<link rel="apple-touch-icon" href="../../apple-touch-icon.png">
+<link rel="mask-icon" href="../../safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="../../posts/2026-06-09-normalization/" />
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --hljs-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+      <script async src="https://www.googletagmanager.com/gtag/js?id=G-HFT45VFBX6"></script>
+      <script>
+        var doNotTrack = false;
+        if ( false ) {
+          var dnt = (navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack);
+          var doNotTrack = (dnt == "1" || dnt == "yes");
+        }
+        if (!doNotTrack) {
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-HFT45VFBX6');
+        }
+      </script><meta property="og:title" content="Normalization: From BatchNorm to RMSNorm to Nothing" />
+<meta property="og:description" content="How transformers tame their activations, and why every generation stripped more out. Building BatchNorm, LayerNorm, RMSNorm, Pre/Post/Peri-Norm placement, QK-Norm, and DyT from scratch in PyTorch." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="../../posts/2026-06-09-normalization/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2026-06-09T00:00:00&#43;00:00" />
+<meta property="article:modified_time" content="2026-06-09T00:00:00&#43;00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Normalization: From BatchNorm to RMSNorm to Nothing"/>
+<meta name="twitter:description" content="How transformers tame their activations. Build BatchNorm, LayerNorm, RMSNorm, Pre/Post/Peri-Norm, QK-Norm, and DyT from scratch in PyTorch."/>
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "Posts",
+      "item": "../../posts/"
+    },
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "Normalization: From BatchNorm to RMSNorm to Nothing",
+      "item": "../../posts/2026-06-09-normalization/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Normalization: From BatchNorm to RMSNorm to Nothing",
+  "name": "Normalization: From BatchNorm to RMSNorm to Nothing",
+  "description": "Normalization is the scale contract between transformer blocks: pick an axis, compute a small statistic, keep the next operation in a useful range. This post walks from BatchNorm to LayerNorm to RMSNorm, through Pre/Post/Peri-Norm placement and QK-Norm, to the normalization-free DyT, building each from scratch in PyTorch.",
+  "keywords": [
+    "transformer", "normalization", "layernorm", "rmsnorm", "deep-learning", "long-read"
+  ],
+  "articleBody": "A transformer keeps writing into the same residual stream, so activation scale can drift with depth. BatchNorm normalizes across batch/time per channel and breaks on padded variable-length text. LayerNorm normalizes across features per token, dropping every batch dependency. RMSNorm drops LayerNorm's mean-centering and keeps only the scale, halving the parameters. Pre-Norm vs Post-Norm decides where the norm sits and controls gradient flow at init; Peri-LN and reordered norms add post-sublayer norms at scale. QK-Norm normalizes only Q and K to stop attention-logit drift. DyT replaces the statistics entirely with an element-wise tanh. The practical default for modern decoder LLMs is RMSNorm with Pre-Norm.",
+  "wordCount" : "4300",
+  "inLanguage": "en",
+  "datePublished": "2026-06-09T00:00:00Z",
+  "dateModified": "2026-06-09T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "David Hoang"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "../../posts/2026-06-09-normalization/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "David's Log",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "../../favicon_coffee.ico"
+    }
+  }
+}
+</script>
+<style>.logo{left:230px!important}
+.header{position:sticky;top:0;z-index:999;background:var(--theme,#fff)}
+.post-single>.toc{display:none}
+.sidebar-toc{position:fixed;top:0;bottom:0;left:0;display:flex;align-items:center;z-index:100;pointer-events:none}
+.sidebar-toc-mini{pointer-events:auto;display:flex;flex-direction:column;gap:14px;padding:10px 8px 10px 12px;max-height:calc(100vh - 60px);overflow-y:auto;cursor:pointer;scrollbar-width:none}
+.sidebar-toc-mini::-webkit-scrollbar{display:none}
+.sidebar-toc-mini-item{display:block;width:18px;height:2px;padding:0;border:none;background:var(--secondary);opacity:.45;border-radius:1px;flex-shrink:0;cursor:pointer;transition:width .15s,opacity .15s,background .15s}
+.sidebar-toc-mini-item.h2{width:12px;margin-left:4px;opacity:.3}
+.sidebar-toc-mini:hover .sidebar-toc-mini-item{opacity:.75}
+.sidebar-toc-mini-item.active{background:var(--primary);opacity:1;width:22px}
+.sidebar-toc-mini-item.h2.active{width:16px}
+.sidebar-toc-panel{position:absolute;top:50%;left:100%;margin-left:6px;width:min(320px,calc(100vw - 56px));max-height:calc(100vh - 60px);overflow-y:auto;padding:16px 18px;background:var(--entry);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.18);opacity:0;visibility:hidden;pointer-events:none;transform:translate(-8px,-50%);transition:opacity .18s,visibility .18s,transform .18s;font-size:14px;line-height:1.5}
+.sidebar-toc.open .sidebar-toc-panel{opacity:1;visibility:visible;pointer-events:auto;transform:translate(0,-50%)}
+.sidebar-toc-title{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--secondary);margin:0 0 12px}
+.sidebar-toc-panel ul{list-style:none;padding:0;margin:0}
+.sidebar-toc-panel li{margin:0;padding:0}
+.sidebar-toc-panel ul ul{margin-left:10px;padding-left:8px;border-left:1px solid var(--border)}
+.sidebar-toc-panel a{display:block;padding:5px 8px;color:var(--secondary);border-radius:4px;transition:color .15s,background .15s}
+.sidebar-toc-panel a:hover{color:var(--primary);background:var(--code-bg);box-shadow:none}
+.sidebar-toc-panel a.active{color:var(--primary);font-weight:600;background:var(--code-bg)}
+.sidebar-toc-panel::-webkit-scrollbar{width:4px}
+.sidebar-toc-panel::-webkit-scrollbar-thumb{background:var(--tertiary);border-radius:2px;border:none}</style>
+<script defer src="../../assets/js/sidebar-toc.js"></script>
+<script defer src="../../assets/js/sidebar-toc.js"></script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    }
+
+</script>
+
+<script>
+  MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$','$$'], ['\\[', '\\]']],
+      processEscapes: true,
+      processEnvironments: true
+    },
+    options: {
+      skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+    }
+  };
+
+  window.addEventListener('load', (event) => {
+      document.querySelectorAll("mjx-container").forEach(function(x){
+        x.parentElement.classList += 'has-jax'})
+    });
+
+</script>
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script type="text/javascript" id="MathJax-script" async
+  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="../../" accesskey="h" title="David&#39;s Whiteboard (Alt + H)">David&#39;s Whiteboard</a>
+            <span class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+                <ul class="lang-switch"><li>|</li>
+                </ul>
+            </span>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="../../" title="Posts">
+                    <span>Posts</span>
+                </a>
+            </li>
+            <li>
+                <a href="../../archives" title="Archive">
+                    <span>Archive</span>
+                </a>
+            </li>
+            <li>
+                <a href="../../search/" title="Search (Alt &#43; /)" accesskey=/>
+                    <span>Search</span>
+                </a>
+            </li>
+            <li>
+                <a href="../../tags/" title="Tags">
+                    <span>Tags</span>
+                </a>
+            </li>
+
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+
+    <h1 class="post-title">
+      Normalization: From BatchNorm to RMSNorm to Nothing
+    </h1>
+    <div class="post-meta">Date: June 9, 2026  |  Estimated Reading Time: 26 min  |  Author: David Hoang
+
+</div>
+  </header> <div class="toc">
+    <details >
+        <summary accesskey="c" title="(Alt + C)">
+            <span class="details">Table of Contents</span>
+        </summary>
+
+        <div class="inner"><ul>
+                <li>
+                    <a href="#introduction" aria-label="Introduction">Introduction</a></li>
+                <li>
+                    <a href="#why-normalize-at-all" aria-label="Why Normalize at All?">Why Normalize at All?</a></li>
+                <li>
+                    <a href="#batchnorm-and-why-it-fails-for-transformers" aria-label="BatchNorm (and Why It Fails for Transformers)">BatchNorm (and Why It Fails for Transformers)</a></li>
+                <li>
+                    <a href="#layernorm" aria-label="LayerNorm">LayerNorm</a></li>
+                <li>
+                    <a href="#pre-norm-vs-post-norm-where-to-put-it" aria-label="Pre-Norm vs Post-Norm: Where to Put It">Pre-Norm vs Post-Norm: Where to Put It</a></li>
+                <li>
+                    <a href="#rmsnorm" aria-label="RMSNorm">RMSNorm</a></li>
+                <li>
+                    <a href="#extra-norms-around-the-sublayer" aria-label="Extra Norms Around the Sublayer">Extra Norms Around the Sublayer</a></li>
+                <li>
+                    <a href="#qk-norm-just-the-attention-vectors" aria-label="QK-Norm: Just the Attention Vectors">QK-Norm: Just the Attention Vectors</a></li>
+                <li>
+                    <a href="#2025-challenge-dynamic-tanh-dyt" aria-label="2025 Challenge: Dynamic Tanh (DyT)">2025 Challenge: Dynamic Tanh (DyT)</a></li>
+                <li>
+                    <a href="#which-norm-should-you-use" aria-label="Which Norm Should You Use?">Which Norm Should You Use?</a></li>
+                <li>
+                    <a href="#references" aria-label="References">References</a></li>
+            </ul>
+        </div>
+    </details>
+</div>
+
+  <div class="post-content"><p><em>How transformers tame their activations, and why every generation stripped more out</em></p>
+<h2 id="introduction">Introduction<a hidden class="anchor" aria-hidden="true" href="#introduction">#</a></h2>
+<p>A transformer block keeps writing into the same residual stream: project, attend, activate, add back, repeat. In a 32-layer stack, that stream can drift far from the scale it had at initialization; attention logits sharpen, residual updates become poorly conditioned, and an otherwise normal learning rate can produce loss spikes in the first few optimizer steps.</p>
+<p>Normalization is the scale contract between blocks. Each scheme chooses an axis, computes a small statistic, and uses it to keep the next operation in a range where gradients are still useful. The interesting part is not &ldquo;normalize or don&rsquo;t normalize&rdquo;, but <em>which axis</em>, <em>which statistic</em>, and <em>where in the block</em>.</p>
+<p>Same running example as the positional-encoding post: <em>&ldquo;The CEO announced record earnings on Friday&rdquo;</em>, 7 tokens, <code>d_model = 64</code>. After the embedding layer, the residual stream is a <code>[7, 64]</code> matrix. LayerNorm and RMSNorm operate on each token vector in that stream; placement variants decide whether the norm sits before or after a sublayer; QK-Norm moves inside attention; DyT removes the statistic entirely and keeps only a point-wise squashing function.</p>
+<p>If you only need the practical map:</p>
+<ul>
+<li><strong>BatchNorm</strong>: normalize across batch/time per channel; great for CNNs, awkward for padded variable-length text</li>
+<li><strong>LayerNorm</strong>: normalize across features per token; original Transformer/BERT/GPT-2 choice, no batch dependency</li>
+<li><strong>RMSNorm</strong>: normalize token-vector scale without subtracting the mean; common default in modern open-weight decoder LLMs</li>
+<li><strong>Pre-Norm / Post-Norm / Peri-LN</strong>: same norm, different placement; controls the gradient path and residual-stream scale</li>
+<li><strong>QK-Norm</strong>: normalize only <code>Q</code> and <code>K</code>; targets attention-logit drift rather than residual-stream drift</li>
+<li><strong>DyT / Derf</strong>: normalization-free research line; replaces statistics with a learned point-wise S-curve</li>
+</ul>
+<p><strong>Note:</strong> The repo for this series is available at <a href="https://github.com/david-hoangt/llm_from_scratch">github.com/david-hoangt/llm_from_scratch</a>; the snippets below are short PyTorch fragments you can paste into a notebook.</p>
+<h2 id="why-normalize-at-all">Why Normalize at All?<a hidden class="anchor" aria-hidden="true" href="#why-normalize-at-all">#</a></h2>
+<p>Stack 32 transformer layers and feed our 7-token sentence through. Each layer adds its sublayer output back into the residual stream, so activation scale can grow additively with depth. By the time &ldquo;Friday&rdquo; reaches the final layer, the model may be operating far from the scale it was initialized for, logits sharpen, residual updates get poorly conditioned, and the optimizer starts fighting activation drift instead of learning token relationships.</p>
+<p>
+$$
+\begin{aligned}
+\text{At layer } 0:&\quad \mathrm{Var}(x) \approx 1 \\
+\text{At layer } L:&\quad \mathrm{Var}(x) \approx 1 + L \cdot \mathrm{Var}(\text{sublayer})
+\end{aligned}
+$$
+</p>
+<ul>
+<li><strong>Without normalization</strong>: the network would need every weight matrix, residual branch, and learning-rate schedule tuned to keep scale bounded across all 32 layers</li>
+<li><strong>With normalization</strong>: each layer rescales its inputs back to a known distribution before the next sublayer fires, regardless of what previous layers did</li>
+</ul>
+<p>The job of a normalization layer is one sentence: take a vector with arbitrary scale, return a vector with controlled scale, sometimes controlled mean too, and let the network learn back any scale or bias it actually needs through trainable parameters. The rest of this post is about which axis to normalize over, and what to drop.</p>
+<h2 id="batchnorm-and-why-it-fails-for-transformers">BatchNorm (and Why It Fails for Transformers)<a hidden class="anchor" aria-hidden="true" href="#batchnorm-and-why-it-fails-for-transformers">#</a></h2>
+<p>BatchNorm came first and works beautifully for CNNs, but the moment you swap images for variable-length sentences, three things break at once. It&rsquo;s worth understanding <em>how</em> it breaks, because LayerNorm is the clean escape hatch.</p>
+<p>
+$$
+\begin{aligned}
+&\text{For each feature/channel } j,\ \text{pooling over non-channel axes:} \\
+&\mu_j = \mathrm{mean}(x[:,j,:]) \qquad \sigma_j = \mathrm{std}(x[:,j,:]) \\
+&\text{(over batch} \times \text{seq\_len, or batch} \times H \times W) \\
+&y_{n,j,t} = \gamma_j \cdot \frac{x_{n,j,t} - \mu_j}{\sigma_j} + \beta_j
+\end{aligned}
+$$
+</p>
+<ul>
+<li><strong>Normalizes per channel, pooling over batch and any spatial/sequence dims</strong>: one <code>(μ_j, σ_j)</code> pair per feature, shared across all positions in the slice</li>
+<li><strong>γ, β</strong> <code>[d_model]</code>, learnable scale and shift, one pair per feature</li>
+<li><strong>Running mean/var</strong>: at inference, BN swaps batch statistics for running averages computed during training</li>
+<li><strong>Built for CNNs</strong>: fixed-shape image tensors <code>[N, C, H, W]</code>, normalize over <code>(N, H, W)</code> per channel</li>
+</ul>
+<p>Now feed it our 7-token sentence inside a padded batch of mixed-length sentences. Three failures stack up.</p>
+<h3 id="failure-1-padding-pollutes-the-statistics">Failure 1: Padding Pollutes the Statistics<a hidden class="anchor" aria-hidden="true" href="#failure-1-padding-pollutes-the-statistics">#</a></h3>
+<p>To form a <code>[B, T_max, d_model]</code> tensor, shorter sentences are padded with zeros to length <code>T_max</code>. BatchNorm 1d operates on this tensor as <code>[N, C, L]</code>, for each channel <code>j</code>, it pools statistics over the entire <code>(batch, sequence)</code> slice, not per position. So PAD tokens at every sequence position drag down the per-channel mean.</p>
+<pre tabindex="0"><code>Batch of 3 sentences, T_max = 7:
+  &quot;The CEO announced record earnings on Friday&quot; → 7 real tokens
+  &quot;Markets closed up&quot;                            → 3 real + 4 PAD
+  &quot;Hi&quot;                                           → 1 real + 6 PAD
+
+For feature j, BN computes:
+  μ_j = mean( x[:, j, :] )   ← averages over batch × seq_len
+                                = 11 real values + 10 PAD zeros (3 batch × 7 pos)</code></pre>
+<ul>
+<li><strong>The mean is dragged toward zero</strong> by the padding tokens, distorting the statistic for every real token in that channel</li>
+<li><strong>Worse with imbalanced lengths</strong>: a batch with one long sentence and many short ones is dominated by zeros, even though those zeros never contribute to a real prediction</li>
+</ul>
+<h3 id="failure-2-traininference-mismatch">Failure 2: Train/Inference Mismatch<a hidden class="anchor" aria-hidden="true" href="#failure-2-traininference-mismatch">#</a></h3>
+<p>BatchNorm uses batch statistics during training and a running average at inference. For images this works because the per-channel distribution is roughly stationary across the dataset. For language, the running averages become a statistic of your batching and padding policy as much as the token distribution, shift the length mix at inference, and the model sees a different normalization regime.</p>
+<h3 id="failure-3-small-batch-sensitivity">Failure 3: Small-Batch Sensitivity<a hidden class="anchor" aria-hidden="true" href="#failure-3-small-batch-sensitivity">#</a></h3>
+<p>LLM training pushes batch sizes per device down (large models eat memory) and microbatch granularity up (gradient accumulation). With effective per-device batches of 4–8 sequences, BN statistics are too noisy to be useful.</p>
+<p>The fix is obvious in hindsight: stop normalizing across the batch. Pick an axis that doesn&rsquo;t care about batch size, padding, or sequence length.</p>
+<h2 id="layernorm">LayerNorm<a hidden class="anchor" aria-hidden="true" href="#layernorm">#</a></h2>
+<p>Strip BatchNorm of its batch dependency entirely. For each token in our 7-token sentence, compute mean and variance across the <em>feature dimension</em>, the 64 numbers that make up that token&rsquo;s hidden vector, and rescale just that vector.</p>
+<p>
+$$
+\begin{aligned}
+&\text{For each token vector } x \in \mathbb{R}^{d}: \\
+&\mu = \frac{1}{d}\sum_{k} x_k \qquad \sigma^2 = \frac{1}{d}\sum_{k}(x_k - \mu)^2 \\
+&y = \gamma \odot \frac{x - \mu}{\sqrt{\sigma^2 + \varepsilon}} + \beta
+\end{aligned}
+$$
+</p>
+<ul>
+<li><strong>x</strong> <code>[d_model]</code>, one token&rsquo;s hidden vector</li>
+<li><strong>μ, σ</strong> scalars, computed independently per token, no batch coupling</li>
+<li><strong>γ, β</strong> <code>[d_model]</code>, learnable scale and shift, applied element-wise</li>
+<li><strong>ε</strong> <code>~1e-5</code>, numerical stability constant, prevents divide-by-zero</li>
+<li><strong>y</strong> <code>[d_model]</code>, normalized output for that token, same shape as <code>x</code>, fed into the next sublayer</li>
+</ul>
+<p>For our sentence with <code>d_model = 64</code>, &ldquo;CEO&rdquo; gets one <code>μ</code> and one <code>σ</code> computed over its 64 features; &ldquo;announced&rdquo; gets its own. No information leaks between tokens; padding doesn&rsquo;t matter; batch size doesn&rsquo;t matter.</p>
+<figure>
+    <img src="asset/batchnorm-layernorm.png" alt="BatchNorm versus LayerNorm statistics" />
+    <figcaption>BatchNorm couples tokens through shared batch/time statistics. LayerNorm computes statistics per token, decoupling everything.</figcaption>
+</figure>
+<pre tabindex="0"><code class="language-python">class LayerNorm(nn.Module):
+    &quot;&quot;&quot;
+    y = γ * (x - μ) / sqrt(σ² + ε) + β
+    where μ, σ are computed over the last dim per token.
+    &quot;&quot;&quot;
+
+    def __init__(self, d_model: int, eps: float = 1e-5):
+        super().__init__()
+        self.eps = eps
+        self.gamma = nn.Parameter(torch.ones(d_model))   # [d_model]
+        self.beta  = nn.Parameter(torch.zeros(d_model))  # [d_model]
+
+    def forward(self, x: torch.Tensor) -&gt; torch.Tensor:
+        &quot;&quot;&quot;x: [batch, seq_len, d_model] → same shape, normalized.&quot;&quot;&quot;
+        mu  = x.mean(dim=-1, keepdim=True)                    # [B, T, 1]
+        var = x.var(dim=-1, keepdim=True, unbiased=False)     # [B, T, 1]
+        x_hat = (x - mu) / torch.sqrt(var + self.eps)         # [B, T, d_model]
+        return self.gamma * x_hat + self.beta</code></pre>
+<h3 id="gotchas-and-trade-offs">Gotchas and Trade-offs<a hidden class="anchor" aria-hidden="true" href="#gotchas-and-trade-offs">#</a></h3>
+<ul>
+<li><strong>Two parameters per feature</strong>: <code>γ</code> and <code>β</code> add <code>2 * d_model</code> trainable parameters per norm layer. For a 32-layer model with <code>d_model = 4096</code>, that&rsquo;s ~520K parameters just for normalization</li>
+<li><strong>Mean and variance reductions</strong>: a naive implementation computes a mean, then a centered variance. Fused kernels reduce the overhead, but LayerNorm is still mostly memory-bandwidth bound on GPU</li>
+<li><strong>No batch coupling means no inference statistics</strong>: LN behaves identically at train and inference time, no running averages, no surprises</li>
+</ul>
+<h3 id="key-takeaway">Key Takeaway<a hidden class="anchor" aria-hidden="true" href="#key-takeaway">#</a></h3>
+<p>LayerNorm normalizes per-token across the feature dim, sidestepping every BatchNorm failure mode at once: no batch dependency, no padding pollution, no train/inference mismatch.</p>
+<p>LN works everywhere, but it does two things: re-center (subtract mean) and re-scale (divide by std). The next question is whether the re-centering step is doing any actual work, and where to put the LN block within the residual stream.</p>
+<h2 id="pre-norm-vs-post-norm-where-to-put-it">Pre-Norm vs Post-Norm: Where to Put It<a hidden class="anchor" aria-hidden="true" href="#pre-norm-vs-post-norm-where-to-put-it">#</a></h2>
+<p>The original Transformer (Vaswani et al., 2017) placed LayerNorm <em>after</em> the residual addition, so each sublayer&rsquo;s output is normalized along with the residual stream. That&rsquo;s &ldquo;Post-Norm&rdquo;. It works, but training requires a learning rate warmup phase: the first few thousand steps use a tiny learning rate, ramp up linearly, then decay. Skip the warmup and Post-Norm transformers can diverge early.</p>
+<pre tabindex="0"><code># Post-Norm (original Transformer, 2017):
+x = LayerNorm(x + Sublayer(x))
+
+# Pre-Norm (modern default):
+x = x + Sublayer(LayerNorm(x))</code></pre>
+<ul>
+<li><strong>Post-Norm</strong>: sublayer adds, then norm rescales. The residual stream itself is normalized</li>
+<li><strong>Pre-Norm</strong>: norm before sublayer, then add. The residual stream stays unnormalized, only the <em>input</em> to each sublayer is rescaled</li>
+<li>The difference is a single line of code and no extra parameters. The training dynamics are completely different.</li>
+</ul>
+<figure>
+    <img src="asset/pre-postnorm.png" alt="Post-Norm versus Pre-Norm residual placement" />
+    <figcaption>Post-Norm normalizes the full residual stream; Pre-Norm leaves the residual untouched and only normalizes the sublayer&rsquo;s input.</figcaption>
+</figure>
+<h3 id="why-post-norm-needs-warmup">Why Post-Norm Needs Warmup<a hidden class="anchor" aria-hidden="true" href="#why-post-norm-needs-warmup">#</a></h3>
+<p>Xiong et al. (<em>&ldquo;On Layer Normalization in the Transformer Architecture&rdquo;</em>, ICML 2020) showed that in Post-Norm, expected gradients near the output layers are large at initialization. With a standard learning rate, the first gradient step can push those top layers out of a useful region of weight space.</p>
+<pre tabindex="0"><code>At initialization:
+  Post-Norm:  top-layer gradients are large before warmup
+  Pre-Norm:   residual path gives gradients a cleaner route through depth</code></pre>
+<ul>
+<li><strong>Post-Norm puts LN after the residual add</strong>: the output-side layers see large expected gradients at init</li>
+<li><strong>Pre-Norm leaves the residual path unnormalized</strong>: gradients can flow through the identity branch instead of passing through a LayerNorm at every residual merge</li>
+<li><strong>Warmup is a workaround</strong> for Post-Norm&rsquo;s bad init geometry, start with a learning rate small enough that you don&rsquo;t fall off the cliff, then ramp up once the model has moved into a stable region</li>
+</ul>
+<p>Pre-Norm transformers can train without the same warmup sensitivity and usually reach comparable final loss faster. Most modern decoder LLMs keep a Pre-Norm path; Gemma-style blocks add post-sublayer norms on top instead of returning to plain Post-Norm.</p>
+<h3 id="gotchas-and-trade-offs">Gotchas and Trade-offs<a hidden class="anchor" aria-hidden="true" href="#gotchas-and-trade-offs">#</a></h3>
+<ul>
+<li><strong>Pre-Norm has its own failure mode</strong>: at extreme depth, the residual stream can grow while each branch sees only a normalized input. Later residual updates become small relative to the stream they are added to</li>
+<li><strong>Post-Norm still has supporters</strong>: some recent work (DeepNet, <em>&ldquo;Scaling Transformers to 1,000 Layers&rdquo;</em>) revisits Post-Norm with careful initialization to avoid the warmup issue</li>
+<li><strong>Pre-Norm needs a final norm</strong>: since the residual stream is never normalized, there&rsquo;s typically a single LayerNorm before the unembedding to keep the output logits in range</li>
+</ul>
+<h3 id="key-takeaway">Key Takeaway<a hidden class="anchor" aria-hidden="true" href="#key-takeaway">#</a></h3>
+<p>Pre-Norm is the common decoder-only path: stable gradients at init, less warmup sensitivity, simpler hyperparameter schedule. Post-Norm normalizes the residual stream itself; Pre-Norm only normalizes sublayer inputs.</p>
+<p>Pre-Norm fixes the placement question. The next question is whether LayerNorm is doing too much work, specifically, whether subtracting the mean is even necessary.</p>
+<h2 id="rmsnorm">RMSNorm<a hidden class="anchor" aria-hidden="true" href="#rmsnorm">#</a></h2>
+<p>LayerNorm does two operations: re-center (subtract <code>μ</code>) and re-scale (divide by <code>σ</code>). Zhang and Sennrich asked the sharper question in <em>&ldquo;Root Mean Square Layer Normalization&rdquo;</em> (NeurIPS 2019): what if the scale control is the important part, and mean-centering is mostly extra work? They dropped the mean computation and reported comparable quality with 7–64% training-time reductions in their tested settings.</p>
+<p>
+$$
+\begin{aligned}
+\mathrm{RMS}(x) &= \sqrt{\frac{1}{d}\sum_{k} x_k^2 + \varepsilon} \\
+y &= \gamma \odot \frac{x}{\mathrm{RMS}(x)}
+\end{aligned}
+$$
+</p>
+<ul>
+<li><strong>One statistic over features</strong>: only <code>mean(x²)</code>, not a separate mean and centered variance</li>
+<li><strong>One parameter per feature</strong>: only <code>γ</code>, no <code>β</code>. Halves the normalization parameters per layer</li>
+<li><strong>No re-centering</strong>: the mean of <code>x</code> is left wherever it was; only the scale is normalized</li>
+</ul>
+<p>For our 7-token sentence, RMSNorm computes one scalar per token (<code>RMS</code> over 64 features), then divides each token&rsquo;s vector by it and applies the per-feature scale <code>γ</code>. The mean of &ldquo;CEO&rdquo;&rsquo;s vector is preserved; only its magnitude is controlled.</p>
+<figure>
+    <img src="asset/layernorm-rms.png" alt="LayerNorm versus RMSNorm computation" />
+    <figcaption>LayerNorm computes both mean and variance, then re-centers and re-scales. RMSNorm skips the mean entirely, one statistic, one division, one parameter.</figcaption>
+</figure>
+<h3 id="why-dropping-the-mean-works">Why Dropping the Mean Works<a hidden class="anchor" aria-hidden="true" href="#why-dropping-the-mean-works">#</a></h3>
+<p>Zhang &amp; Sennrich&rsquo;s argument is sharper than &ldquo;the bias absorbs it&rdquo;: they decomposed LayerNorm into two separate invariance properties and tested which one carried the convergence benefit.</p>
+<ul>
+<li><strong>Re-scaling invariance</strong>: multiplying inputs by any positive constant leaves the output unchanged. This is the part that controls activation magnitude and stops the residual stream from drifting</li>
+<li><strong>Re-centering invariance</strong>: adding any constant offset to inputs leaves the output unchanged. The paper&rsquo;s experiments show this property contributes little to convergence in transformers</li>
+<li><strong>Implicit learning-rate adaptation</strong>: the RMS statistic makes updates less sensitive to input and weight scale, preserving the optimizer-side benefit without mean subtraction</li>
+<li><strong>Empirical confirmation</strong>: across their translation, language modeling, vision, and speech experiments, dropping the mean preserved quality while reducing runtime</li>
+</ul>
+<p>
+$$
+\begin{aligned}
+\text{LayerNorm:}&\quad y = \gamma \odot \frac{x - \mu}{\sqrt{\mathrm{Var}(x) + \varepsilon}} + \beta \qquad (\text{mean+var, } \gamma+\beta) \\
+\text{RMSNorm:}&\quad y = \gamma \odot \frac{x}{\sqrt{\mathrm{mean}(x^2) + \varepsilon}} \qquad (\text{RMS, } \gamma)
+\end{aligned}
+$$
+</p>
+<ul>
+<li><strong>Fewer reduction ops</strong> → the paper reports 7–64% runtime reduction across tested models; actual LLM gains depend on kernel fusion and hardware</li>
+<li><strong>Fewer params</strong> → halves optimizer state for normalization, reduces gradient communication in distributed training</li>
+<li><strong>Same downstream quality in the original experiments</strong>: verified across translation, language modeling, vision, and speech tasks</li>
+</ul>
+<pre tabindex="0"><code class="language-python">class RMSNorm(nn.Module):
+    &quot;&quot;&quot;
+    y = γ * x / sqrt(mean(x²) + ε)
+
+    No mean subtraction, no β bias. Half the parameters of LayerNorm.
+    &quot;&quot;&quot;
+
+    def __init__(self, d_model: int, eps: float = 1e-6):
+        super().__init__()
+        self.eps = eps
+        self.gamma = nn.Parameter(torch.ones(d_model))  # [d_model]
+
+    def forward(self, x: torch.Tensor) -&gt; torch.Tensor:
+        &quot;&quot;&quot;x: [batch, seq_len, d_model] → same shape, normalized.&quot;&quot;&quot;
+        rms = torch.sqrt(x.pow(2).mean(dim=-1, keepdim=True) + self.eps)  # [B, T, 1]
+        return self.gamma * (x / rms)</code></pre>
+<h3 id="gotchas-and-trade-offs">Gotchas and Trade-offs<a hidden class="anchor" aria-hidden="true" href="#gotchas-and-trade-offs">#</a></h3>
+<ul>
+<li><strong>Single parameter per feature</strong>: only <code>γ</code>, no learnable bias <code>β</code>. The mean of each token&rsquo;s vector is left wherever it was after the previous sublayer</li>
+<li><strong>Numerically slightly different epsilon placement</strong>: most implementations put <code>ε</code> inside the <code>sqrt</code>, some outside. The difference is tiny but check the source if matching a specific reference implementation</li>
+<li><strong>Not a drop-in for every architecture</strong>: re-scaling invariance does most of the work in transformers, but architectures that genuinely depend on per-feature mean centering (some CNN variants) still prefer LayerNorm</li>
+</ul>
+<h3 id="example-architectures">Example Architectures<a hidden class="anchor" aria-hidden="true" href="#example-architectures">#</a></h3>
+<ul>
+<li><strong>LLaMA / LLaMA 2 / LLaMA 3</strong>: RMSNorm</li>
+<li><strong>Mistral / Mixtral</strong>: RMSNorm</li>
+<li><strong>Gemma 2 / 3</strong>: RMSNorm (with peri-norm placement, see next section)</li>
+<li><strong>Qwen 2 / 3</strong>: RMSNorm</li>
+<li><strong>DeepSeek-V2 / V3</strong>: RMSNorm</li>
+<li><strong>SmolLM3</strong>: RMSNorm</li>
+</ul>
+<h3 id="key-takeaway">Key Takeaway<a hidden class="anchor" aria-hidden="true" href="#key-takeaway">#</a></h3>
+<p>RMSNorm drops LayerNorm&rsquo;s mean-centering step: one statistic, one trainable vector, fewer reductions, and comparable quality in the original experiments. Most recent decoder-only open-weight LLM families use it.</p>
+<p>RMSNorm fixes the <em>operation</em>; Pre-Norm fixed the <em>placement</em>. The next question revisits placement: what if pre-norm alone isn&rsquo;t enough at scale?</p>
+<h2 id="extra-norms-around-the-sublayer">Extra Norms Around the Sublayer<a hidden class="anchor" aria-hidden="true" href="#extra-norms-around-the-sublayer">#</a></h2>
+<p>Pre-Norm trains stably, but it has a hidden cost at scale: the residual stream can keep growing because the stream itself is never renormalized. At billions of parameters and dozens of layers, that drift can show up as loss spikes and learning-rate sensitivity. Recent models handle this by adding norms around the sublayer output, but they do not all use the same placement.</p>
+<pre tabindex="0"><code># Pre-Norm only (LLaMA-style):
+x = x + Attn(Norm(x))
+x = x + FFN(Norm(x))
+
+# Peri-LN / pre+post RMSNorm (Gemma 2-style):
+x = x + Norm_post_attn(Attn(Norm_pre_attn(x)))
+x = x + Norm_post_ffn (FFN (Norm_pre_ffn (x)))
+
+# Reordered norm (OLMo 2-style):
+h = x + Norm_attn(Attn(x))
+x = h + Norm_ffn (FFN (h))</code></pre>
+<ul>
+<li><strong>Gemma-style Peri-LN</strong>: four RMSNorms per block, before and after attention/FFN</li>
+<li><strong>OLMo 2-style reordered norm</strong>: RMSNorm after attention and FFN outputs, plus RMSNorm on <code>Q</code>/<code>K</code> inside attention</li>
+<li><strong>Pre-Norm preserves the easy gradient path</strong>: the residual identity branch remains open</li>
+<li><strong>Post-sublayer norm caps the residual update</strong> before it merges back into the stream</li>
+</ul>
+<figure>
+    <img src="asset/periLN.png" alt="Pre-Norm versus Gemma-style Peri-LN" />
+    <figcaption>Pre-Norm normalizes the input to each sublayer. Gemma-style Peri-LN adds a second norm on the sublayer&rsquo;s output before adding back to the residual.</figcaption>
+</figure>
+
+<p>Here, <code>Sublayer</code> means one residual branch inside a Transformer block: either Attention or FFN. Peri-LN applies the same pre/post norm pattern to both, so the diagram collapses them into one generic sublayer.</p>
+
+<pre tabindex="0"><code class="language-python">class PeriLNBlock(nn.Module):
+    &quot;&quot;&quot;
+    Gemma-style block: RMSNorm pre AND post each sublayer.
+
+      x = x + RMSNorm_post_attn(Attn(RMSNorm_pre_attn(x)))
+      x = x + RMSNorm_post_ffn (FFN (RMSNorm_pre_ffn (x)))
+    &quot;&quot;&quot;
+
+    def __init__(self, d_model: int, attn: nn.Module, ffn: nn.Module):
+        super().__init__()
+        self.pre_attn  = RMSNorm(d_model)
+        self.post_attn = RMSNorm(d_model)
+        self.pre_ffn   = RMSNorm(d_model)
+        self.post_ffn  = RMSNorm(d_model)
+        self.attn = attn
+        self.ffn  = ffn
+
+    def forward(self, x: torch.Tensor) -&gt; torch.Tensor:
+        &quot;&quot;&quot;x: [batch, seq_len, d_model]&quot;&quot;&quot;
+        x = x + self.post_attn(self.attn(self.pre_attn(x)))
+        x = x + self.post_ffn (self.ffn (self.pre_ffn (x)))
+        return x</code></pre>
+<h3 id="gotchas-and-trade-offs">Gotchas and Trade-offs<a hidden class="anchor" aria-hidden="true" href="#gotchas-and-trade-offs">#</a></h3>
+<ul>
+<li><strong>Extra norm layers</strong>: Gemma-style Peri-LN uses 4 RMSNorms per block instead of 2. OLMo 2&rsquo;s reordered norm moves the block norms after sublayer outputs instead of simply adding four pre/post norms</li>
+<li><strong>Helps most at scale</strong>: for 100M-parameter toy models, the payoff can be small. The benefit appears when residual variance and gradient spikes compound across many layers</li>
+<li><strong>Placement is model-specific</strong>: Gemma 2 uses RMSNorm before and after each sublayer; OLMo 2 normalizes attention/FFN outputs and also normalizes <code>Q</code>/<code>K</code>. Check the implementation before reproducing a checkpoint</li>
+</ul>
+<h3 id="key-takeaway">Key Takeaway<a hidden class="anchor" aria-hidden="true" href="#key-takeaway">#</a></h3>
+<p>Extra post-sublayer norms target the failure mode Pre-Norm leaves open: residual updates that grow through depth. Gemma-style Peri-LN keeps pre-norm and adds post-sublayer RMSNorm; OLMo 2 takes a reordered-norm route. Both are practical stability tools once scale makes residual drift visible.</p>
+<p>So far every scheme has operated on the residual stream. The next question: what if the issue isn&rsquo;t the residual at all, but the <code>Q</code> and <code>K</code> projections that get multiplied to produce attention logits?</p>
+<h2 id="qk-norm-just-the-attention-vectors">QK-Norm: Just the Attention Vectors<a hidden class="anchor" aria-hidden="true" href="#qk-norm-just-the-attention-vectors">#</a></h2>
+<p>At billion-parameter scale, attention logits can drift even when the residual stream is under control. If the norms of <code>q</code> and <code>k</code> grow, the dot product <code>q @ k.T</code> grows with them, softmax rows collapse toward one-hot weights, and gradients through non-winning keys fade out. Two variants of &ldquo;QK-Norm&rdquo; address this by normalizing <code>Q</code> and <code>K</code> before the dot product.</p>
+<h3 id="variant-a-cosine-qk-norm-henry-et-al-2020">Variant A, Cosine QK-Norm (Henry et al., 2020)<a hidden class="anchor" aria-hidden="true" href="#variant-a-cosine-qk-norm-henry-et-al-2020">#</a></h3>
+<p>L2-normalize <code>Q</code> and <code>K</code> to unit length, then replace <code>1/sqrt(d_k)</code> with a learnable scale <code>g</code>. The dot product becomes a true cosine similarity, bounded by construction.</p>
+<pre tabindex="0"><code># Standard scaled dot-product attention:
+scores = (Q @ K.T) / sqrt(d_k)
+
+# Cosine QK-Norm (Henry et al., EMNLP Findings 2020):
+Q_hat  = Q / ||Q||                # L2 normalize each query vector
+K_hat  = K / ||K||                # L2 normalize each key vector
+scores = g * (Q_hat @ K_hat.T)    # g learnable, replaces sqrt(d_k)</code></pre>
+<ul>
+<li><strong>L2 normalization along the head dim</strong>: each query and key vector becomes a unit vector</li>
+<li><strong>Dot product becomes cosine similarity</strong>: bounded to <code>[-1, 1]</code> by construction</li>
+<li><strong>Learnable scale <code>g</code></strong>: replaces the fixed <code>sqrt(d_k)</code> divisor; lets the model choose how peaked attention should be</li>
+<li><strong>Logit magnitude bounded by <code>g</code></strong>: no more runaway growth</li>
+</ul>
+<p>For our sentence, &ldquo;announced&rdquo; attending to &ldquo;CEO&rdquo; produces a cosine similarity in <code>[-1, 1]</code>, scaled by <code>g</code> into whatever sharpness range the head learns.</p>
+<figure>
+    <img src="asset/qknorm.png" alt="Standard Attention versus Cosine QK-Norm" />
+    <figcaption>Cosine QK-Norm removes Q/K vector length from the dot product. Attention logits depend on angle first, then a learnable scale g.</figcaption>
+</figure>
+<h3 id="variant-b-layernormrmsnorm-qk-norm-vit-22b-chameleon-olmo-2">Variant B, LayerNorm/RMSNorm QK-Norm (ViT-22B, Chameleon, OLMo 2)<a hidden class="anchor" aria-hidden="true" href="#variant-b-layernormrmsnorm-qk-norm-vit-22b-chameleon-olmo-2">#</a></h3>
+<p>ViT-22B and several newer model families use a softer formulation: apply LayerNorm or RMSNorm along the head dim of <code>Q</code> and <code>K</code>, then keep the standard <code>1/sqrt(d_k)</code> scaling.</p>
+<pre tabindex="0"><code># LayerNorm/RMSNorm QK-Norm (ViT-22B, Chameleon, OLMo 2):
+Q_hat  = LayerNorm(Q, dim=d_k)    # or RMSNorm, controls per-vector scale
+K_hat  = LayerNorm(K, dim=d_k)
+scores = (Q_hat @ K_hat.T) / sqrt(d_k)  # standard scaling kept</code></pre>
+<ul>
+<li><strong>Magnitude is controlled, but vectors are not unit-length</strong>: the dot product is <em>not</em> bounded to <code>[-1, 1]</code>; it&rsquo;s just kept in a stable range</li>
+<li><strong>Why this version shows up in large models</strong>: it preserves more of the geometry of <code>Q</code> and <code>K</code> than unit-vector normalization, plays nicely with mixed precision, and slots into existing scaled-dot-product code without changing the scaling factor</li>
+<li><strong>What it shares with Variant A</strong>: the runaway-logit failure mode is controlled at the source, because <code>Q</code> and <code>K</code> magnitudes can no longer grow unchecked during training</li>
+</ul>
+
+<h3 id="why-logits-drift-without-it">Why Logits Drift Without It<a hidden class="anchor" aria-hidden="true" href="#why-logits-drift-without-it">#</a></h3>
+<p>Training dynamics push the model toward higher confidence: the optimizer reduces loss by making useful attention weights larger, which means making logits more separated. ViT-22B hit this failure around the 8B-parameter scale: uncontrolled attention-logit growth produced near-one-hot attention and divergent loss.</p>
+<pre tabindex="0"><code>Unnormalized Q/K:
+  ||Q|| grows, ||K|| grows
+    → Q @ K.T grows
+    → softmax entropy collapses
+    → gradients through non-winning keys fade out
+
+QK-normalized:
+  normalize Q and K along d_k
+    → dot-product scale stays controlled
+    → softmax stays trainable</code></pre>
+<p>Variant A caps the loop by construction: logits stay inside <code>[-g, g]</code>. Variant B is less strict, but it removes the easiest path to logit explosion: growing the norms of <code>Q</code> and <code>K</code>.</p>
+<p>The cosine variant (A) is the cleanest implementation, Variant B is a one-line swap, replacing <code>F.normalize(...)</code> with <code>LayerNorm(d_k)(...)</code> and restoring <code>/ math.sqrt(d_k)</code> in the score computation.</p>
+<pre tabindex="0"><code class="language-python">class QKNormAttention(nn.Module):
+    &quot;&quot;&quot;
+    Cosine QK-Norm (Variant A, Henry et al., 2020).
+
+    Standard MHA, but with L2-normalized Q and K and learnable scalar g.
+
+      scores = g * (Q_hat @ K_hat.T)
+      where Q_hat = Q / ||Q||, K_hat = K / ||K||  (along head dim)
+
+    For Variant B (ViT-22B style), replace F.normalize with LayerNorm/RMSNorm
+    along the head dim and restore / math.sqrt(d_k) in the score computation.
+    &quot;&quot;&quot;
+
+    def __init__(self, d_model: int, n_heads: int, init_scale: float = 10.0):
+        super().__init__()
+        self.n_heads = n_heads
+        self.d_k = d_model // n_heads
+
+        self.W_q = nn.Linear(d_model, d_model, bias=False)
+        self.W_k = nn.Linear(d_model, d_model, bias=False)
+        self.W_v = nn.Linear(d_model, d_model, bias=False)
+        self.W_o = nn.Linear(d_model, d_model, bias=False)
+
+        # One learnable scale per head
+        self.g = nn.Parameter(torch.full((n_heads, 1, 1), init_scale))
+
+    def forward(self, x: torch.Tensor, mask=None) -&gt; torch.Tensor:
+        B, T, _ = x.shape
+        Q = self.W_q(x).view(B, T, self.n_heads, self.d_k).transpose(1, 2)  # [B, h, T, d_k]
+        K = self.W_k(x).view(B, T, self.n_heads, self.d_k).transpose(1, 2)
+        V = self.W_v(x).view(B, T, self.n_heads, self.d_k).transpose(1, 2)
+
+        # L2 normalize along head dim, turns each Q, K vector into a unit vector
+        Q_hat = F.normalize(Q, p=2, dim=-1)
+        K_hat = F.normalize(K, p=2, dim=-1)
+
+        scores = self.g * torch.matmul(Q_hat, K_hat.transpose(-2, -1))  # [B, h, T, T]
+
+        if mask is not None:
+            scores = scores.masked_fill(mask, float(&quot;-inf&quot;))
+
+        weights = F.softmax(scores, dim=-1)
+        context = torch.matmul(weights, V)
+        context = context.transpose(1, 2).contiguous().view(B, T, -1)
+        return self.W_o(context)</code></pre>
+<h3 id="gotchas-and-trade-offs">Gotchas and Trade-offs<a hidden class="anchor" aria-hidden="true" href="#gotchas-and-trade-offs">#</a></h3>
+<ul>
+<li><strong>Compatible with FlashAttention</strong>: normalization happens before the kernel; the kernel sees pre-normalized Q, K and treats them like any other inputs</li>
+<li><strong>Can block MLA absorption</strong>: Multi-Latent Attention implementations often factorize Q/K through low-rank projections and avoid materializing full per-head vectors. QK-Norm forces you to normalize those vectors, which can break the optimization even if the math is still possible</li>
+<li><strong>Scale init matters</strong>: Variant A&rsquo;s <code>g</code> and Variant B&rsquo;s norm scale decide how sharp attention is at step 0. Too high and you reintroduce early softmax saturation</li>
+<li><strong>Newer variants exist</strong>: Lp-norm QK-Norm (using <code>Lp</code> instead of <code>L2</code>), per-head learnable scale vs. shared scale, and model-specific placement around RoPE</li>
+</ul>
+<h3 id="example-architectures">Example Architectures<a hidden class="anchor" aria-hidden="true" href="#example-architectures">#</a></h3>
+<ul>
+<li><strong>Henry et al., 2020</strong> (Variant A, cosine), low-resource NMT demo, +0.928 BLEU average over baseline</li>
+<li><strong>ViT-22B</strong> (Google, 2023, Variant B), large-scale transformer demo, LayerNorm on Q/K with <code>1/sqrt(d_k)</code> retained</li>
+<li><strong>Chameleon</strong> (Meta, 2024, Variant B), multimodal model with QK normalization before attention</li>
+<li><strong>Gemma 3</strong> (Google DeepMind, 2025, Variant B), replaces Gemma 2&rsquo;s attention logit soft-capping with QK-Norm</li>
+<li><strong>OLMo 2</strong> (AI2, 2025, Variant B), RMSNorm on Q/K plus post-sublayer normalization</li>
+</ul>
+<h3 id="key-takeaway">Key Takeaway<a hidden class="anchor" aria-hidden="true" href="#key-takeaway">#</a></h3>
+<p>QK-Norm controls attention-logit growth at the source: normalize <code>Q</code> and <code>K</code> along the head dim before the dot product. Variant A (cosine) bounds logits to <code>[-g, g]</code> by construction; Variant B (LayerNorm/RMSNorm) keeps the standard scaling but stops <code>Q</code>/<code>K</code> magnitudes from drifting unchecked.</p>
+<p>Every scheme above is some flavor of &ldquo;compute statistics, divide by them&rdquo;. The next question is whether the <em>normalization itself</em> is the load-bearing operation, or whether something simpler does the same job.</p>
+<p><em>From this point on, the question changes, from <strong>how</strong> to normalize to <strong>whether</strong> normalization is even necessary. The following section covers a 2025 research result, not a production default. If you&rsquo;re here for the fundamentals, RMSNorm above is still the practical default for open-weight decoder LLMs.</em></p>
+<h2 id="2025-challenge-dynamic-tanh-dyt">2025 Challenge: Dynamic Tanh (DyT)<a hidden class="anchor" aria-hidden="true" href="#2025-challenge-dynamic-tanh-dyt">#</a></h2>
+<p>Every scheme above computes statistics, divides, and rescales. Zhu, Chen, He, LeCun, and Liu noticed something in <em>&ldquo;Transformers without Normalization&rdquo;</em> (CVPR 2025): if you plot LayerNorm&rsquo;s input against its output across layers, the curve often looks like <code>tanh</code>, squashing extreme values while leaving the middle roughly linear. So they replaced normalization entirely with an element-wise tanh:</p>
+<p>
+$$
+\mathrm{DyT}(x) = \gamma \odot \tanh(\alpha \cdot x) + \beta
+$$
+</p>
+<ul>
+<li><strong>α</strong> scalar, learnable, controls the steepness of the tanh</li>
+<li><strong>γ, β</strong> <code>[d_model]</code>, learnable scale and shift, exactly like LayerNorm</li>
+<li><strong>No statistics computed</strong>: no mean, no variance, no division. Pure element-wise op</li>
+<li><strong>Drop-in replacement in tested blocks</strong>: swap a LayerNorm or RMSNorm site for <code>DyT(d_model)</code> and keep the surrounding architecture unchanged</li>
+</ul>
+<p>For our 7-token sentence, DyT applies the same <code>tanh(α * x)</code> to every element of every token&rsquo;s vector, then per-feature scale and shift. No interaction between features, no coupling within a token.</p>
+<h3 id="why-it-works">Why It Works<a hidden class="anchor" aria-hidden="true" href="#why-it-works">#</a></h3>
+<p>The paper&rsquo;s empirical observation: LayerNorm&rsquo;s input-output curve is often S-shaped because:</p>
+<ul>
+<li><strong>Most activations are in the linear regime</strong> of the normalized output, <code>x / σ</code> for a typical <code>x</code> produces a value in <code>[-2, 2]</code></li>
+<li><strong>Outliers get squashed</strong>: extreme <code>x</code> values produce normalized outputs near <code>±2</code>, the saturation region</li>
+<li><strong>An S-curve is the simplest function that does both</strong>: and <code>tanh</code> is the cheapest S-curve to compute</li>
+</ul>
+<p>DyT&rsquo;s bet: the statistics may not be the load-bearing part. In many transformer blocks, LayerNorm behaves like an adaptive S-curve; replace it with an explicit S-curve, save the reduction ops, and see whether quality holds.</p>
+<figure>
+    <img src="asset/laynorm-dyt.png" alt="LayerNorm versus DyT element-wise tanh" />
+    <figcaption>LayerNorm computes per-token statistics. DyT skips the statistics entirely, element-wise tanh approximates the same input-output mapping.</figcaption>
+</figure>
+<pre tabindex="0"><code class="language-python">class DyT(nn.Module):
+    &quot;&quot;&quot;
+    DyT(x) = γ * tanh(α * x) + β
+
+    No statistics. No reduction across the feature dim.
+    Element-wise replacement for LayerNorm/RMSNorm.
+    &quot;&quot;&quot;
+
+    def __init__(self, d_model: int, init_alpha: float = 0.5):
+        super().__init__()
+        self.alpha = nn.Parameter(torch.tensor(init_alpha))
+        self.gamma = nn.Parameter(torch.ones(d_model))   # [d_model]
+        self.beta  = nn.Parameter(torch.zeros(d_model))  # [d_model]
+
+    def forward(self, x: torch.Tensor) -&gt; torch.Tensor:
+        &quot;&quot;&quot;x: [batch, seq_len, d_model] → same shape.&quot;&quot;&quot;
+        return self.gamma * torch.tanh(self.alpha * x) + self.beta</code></pre>
+<h3 id="what-the-paper-tested">What the Paper Tested<a hidden class="anchor" aria-hidden="true" href="#what-the-paper-tested">#</a></h3>
+<p>Zhu et al. ran DyT as a drop-in replacement across:</p>
+<ul>
+<li><strong>Vision</strong>: ViT and ConvNeXt (supervised), MAE and DINO (self-supervised)</li>
+<li><strong>Language</strong>: LLaMA-style models</li>
+<li><strong>Diffusion</strong>: DiT</li>
+<li><strong>Speech</strong>: wav2vec 2.0</li>
+<li><strong>DNA</strong>: sequence modeling</li>
+</ul>
+<p>Across the reported settings, DyT-equipped transformers matched or slightly exceeded their normalized counterparts, with training curves close to LayerNorm.</p>
+<h3 id="gotchas-and-trade-offs">Gotchas and Trade-offs<a hidden class="anchor" aria-hidden="true" href="#gotchas-and-trade-offs">#</a></h3>
+<ul>
+<li><strong>Newer than the rest</strong>: DyT is from CVPR 2025; production deployments are still rare. Reproduce the paper before relying on it for a critical run</li>
+<li><strong>Initialization of α matters</strong>: the paper recommends <code>α ≈ 0.5</code> for transformers. Too small and the tanh is nearly linear (no squashing); too large and it saturates everything</li>
+<li><strong>No statistics → no per-token coupling</strong>: every element is processed independently. This may matter for tasks where per-token magnitude normalization is genuinely load-bearing</li>
+<li><strong>Speedup is modest at FP16/BF16</strong>: RMSNorm is already cheap on modern GPUs. DyT&rsquo;s win is conceptual (no reduction op) as much as wall-clock</li>
+<li><strong>Follow-up work is already moving</strong>: Derf (<code>erf(αx + s)</code>) reports stronger normalization-free results than DyT in a December 2025 preprint. Treat DyT as the first clean crack in the normalization assumption, not the final answer</li>
+</ul>
+<h3 id="key-takeaway">Key Takeaway<a hidden class="anchor" aria-hidden="true" href="#key-takeaway">#</a></h3>
+<p>DyT replaces normalization with an element-wise <code>tanh(α * x)</code>, no statistics, no division, and drop-in compatible in the paper&rsquo;s tested transformer blocks. It challenges the long-standing assumption that normalization layers are essential, while newer normalization-free functions suggest this line of work is still moving.</p>
+<h2 id="which-norm-should-you-use">Which Norm Should You Use?<a hidden class="anchor" aria-hidden="true" href="#which-norm-should-you-use">#</a></h2>
+<p>The trajectory across this post: from normalizing across the <em>batch</em> (BatchNorm), to across <em>features per token</em> (LayerNorm), to <em>features per token without centering</em> (RMSNorm), to extra norms around sublayer outputs, to <em>just Q and K</em> (QK-Norm), to <em>no normalization statistics at all</em> (DyT/Derf). Each step either drops an operation, moves the statistic, or narrows the place where scale needs control.</p>
+<ul>
+<li><strong>Decoder-only LLM, modern default</strong> → RMSNorm + Pre-Norm. Used by LLaMA, Mistral, Qwen, DeepSeek, SmolLM3</li>
+<li><strong>Large decoder at scale</strong> → RMSNorm plus model-specific post-sublayer norms when residual drift shows up. Extra RMSNorm cost is small; stability gains compound</li>
+<li><strong>Stability issues at scale (attention logits exploding)</strong> → add QK-Norm to attention. Cosine QK-Norm bounds logits by construction; LayerNorm/RMSNorm QK-Norm controls Q/K scale. Compatible with FlashAttention; can complicate MLA absorption</li>
+<li><strong>Encoder model (BERT-style)</strong> → LayerNorm. RMSNorm works too, but LayerNorm is what every reference impl ships with</li>
+<li><strong>Vision CNN</strong> → BatchNorm. Where it was born, where it still works best</li>
+<li><strong>Research / experimentation</strong> → DyT or Derf as a drop-in test for whether your normalization is doing real work, or whether a point-wise S-curve is enough</li>
+</ul>
+<h2 id="references">References<a hidden class="anchor" aria-hidden="true" href="#references">#</a></h2>
+<ul>
+<li>Ioffe &amp; Szegedy, <a href="https://proceedings.mlr.press/v37/ioffe15.html"><em>"Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift"</em></a>, ICML 2015, BatchNorm</li>
+<li>Ba, Kiros, Hinton, <a href="https://arxiv.org/abs/1607.06450"><em>"Layer Normalization"</em></a>, 2016, LayerNorm</li>
+<li>Vaswani et al., <a href="https://arxiv.org/abs/1706.03762"><em>"Attention Is All You Need"</em></a>, NeurIPS 2017, original Post-Norm transformer</li>
+<li>Zhang &amp; Sennrich, <a href="https://arxiv.org/abs/1910.07467"><em>"Root Mean Square Layer Normalization"</em></a>, NeurIPS 2019, RMSNorm, 7–64% speedup over LayerNorm</li>
+<li>Henry et al., <a href="https://arxiv.org/abs/2010.04245"><em>"Query-Key Normalization for Transformers"</em></a>, Findings of EMNLP 2020, QK-Norm</li>
+<li>Xiong et al., <a href="https://arxiv.org/abs/2002.04745"><em>"On Layer Normalization in the Transformer Architecture"</em></a>, ICML 2020, Pre-Norm vs Post-Norm gradient analysis, warmup elimination</li>
+<li>Wang et al., <a href="https://arxiv.org/abs/2203.00555"><em>"DeepNet: Scaling Transformers to 1,000 Layers"</em></a>, 2022, Post-Norm with careful init for very deep networks</li>
+<li>Dehghani et al., <a href="https://openreview.net/forum?id=Lhyy8H75KA"><em>"Scaling Vision Transformers to 22 Billion Parameters"</em></a>, 2023, QK-Norm at scale (ViT-22B)</li>
+<li>Meta AI, <a href="https://arxiv.org/abs/2405.09818"><em>"Chameleon: Mixed-Modal Early-Fusion Foundation Models"</em></a>, 2024, QK normalization in multimodal attention</li>
+<li>Google DeepMind, <a href="https://storage.googleapis.com/deepmind-media/gemma/gemma-2-report.pdf"><em>"Gemma 2: Improving Open Language Models at a Practical Size"</em></a>, 2024, pre- and post-norm with RMSNorm</li>
+<li>Google DeepMind, <a href="https://arxiv.org/abs/2503.19786"><em>"Gemma 3 Technical Report"</em></a>, 2025, pre- and post-norm with RMSNorm plus QK-Norm</li>
+<li>AI2, <a href="https://arxiv.org/abs/2501.00656"><em>"2 OLMo 2 Furious"</em></a>, 2025, RMSNorm on Q/K and reordered post-sublayer normalization</li>
+<li>Zhu, Chen, He, LeCun, Liu, <a href="https://openaccess.thecvf.com/content/CVPR2025/html/Zhu_Transformers_without_Normalization_CVPR_2025_paper.html"><em>"Transformers without Normalization"</em></a>, CVPR 2025, Dynamic Tanh (DyT)</li>
+<li>Chen, Lu, Zhu, Sun, Liu, <a href="https://arxiv.org/abs/2512.10938"><em>"Stronger Normalization-Free Transformers"</em></a>, arXiv 2025, Derf</li>
+</ul>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="../../tags/transformer/">Transformer</a></li>
+      <li><a href="../../tags/normalization/">Normalization</a></li>
+      <li><a href="../../tags/layernorm/">Layernorm</a></li>
+      <li><a href="../../tags/rmsnorm/">Rmsnorm</a></li>
+      <li><a href="../../tags/deep-learning/">Deep-Learning</a></li>
+      <li><a href="../../tags/long-read/">Long-Read</a></li>
+    </ul>
+<nav class="paginav">
+  <a class="prev" href="../../posts/2026-05-06-positional-encoding/">
+    <span class="title">&laquo; </span>
+    <br>
+    <span>Positional Encoding: How Transformers Learn Where Tokens Sit</span>
+  </a>
+</nav>
+
+
+<div class="share-buttons">
+    <a target="_blank" rel="noopener noreferrer" aria-label="share Normalization on twitter"
+        href="https://twitter.com/intent/tweet/?text=Normalization%3A%20From%20BatchNorm%20to%20RMSNorm%20to%20Nothing&amp;url=https%3a%2f%2fdavid-hoangt.github.io%2fposts%2f2026-06-09-normalization%2f&amp;hashtags=transformer%2cnormalization%2clayernorm%2crmsnorm%2cdeep-learning%2clong-read">
+        <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve">
+            <path
+                d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-386.892,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Zm-253.927,424.544c135.939,0 210.268,-112.643 210.268,-210.268c0,-3.218 0,-6.437 -0.153,-9.502c14.406,-10.421 26.973,-23.448 36.935,-38.314c-13.18,5.824 -27.433,9.809 -42.452,11.648c15.326,-9.196 26.973,-23.602 32.49,-40.92c-14.252,8.429 -30.038,14.56 -46.896,17.931c-13.487,-14.406 -32.644,-23.295 -53.946,-23.295c-40.767,0 -73.87,33.104 -73.87,73.87c0,5.824 0.613,11.494 1.992,16.858c-61.456,-3.065 -115.862,-32.49 -152.337,-77.241c-6.284,10.881 -9.962,23.601 -9.962,37.088c0,25.594 13.027,48.276 32.95,61.456c-12.107,-0.307 -23.448,-3.678 -33.41,-9.196l0,0.92c0,35.862 25.441,65.594 59.311,72.49c-6.13,1.686 -12.72,2.606 -19.464,2.606c-4.751,0 -9.348,-0.46 -13.946,-1.38c9.349,29.426 36.628,50.728 68.965,51.341c-25.287,19.771 -57.164,31.571 -91.8,31.571c-5.977,0 -11.801,-0.306 -17.625,-1.073c32.337,21.15 71.264,33.41 112.95,33.41Z" />
+        </svg>
+    </a>
+    <a target="_blank" rel="noopener noreferrer" aria-label="share Normalization on linkedin"
+        href="https://www.linkedin.com/shareArticle?mini=true&amp;url=https%3a%2f%2fdavid-hoangt.github.io%2fposts%2f2026-06-09-normalization%2f&amp;title=Normalization%3A%20From%20BatchNorm%20to%20RMSNorm%20to%20Nothing&amp;summary=Normalization&amp;source=https%3a%2f%2fdavid-hoangt.github.io%2fposts%2f2026-06-09-normalization%2f">
+        <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve">
+            <path
+                d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-386.892,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Zm-288.985,423.278l0,-225.717l-75.04,0l0,225.717l75.04,0Zm270.539,0l0,-129.439c0,-69.333 -37.018,-101.586 -86.381,-101.586c-39.804,0 -57.634,21.891 -67.617,37.266l0,-31.958l-75.021,0c0.995,21.181 0,225.717 0,225.717l75.02,0l0,-126.056c0,-6.748 0.486,-13.492 2.474,-18.315c5.414,-13.475 17.767,-27.434 38.494,-27.434c27.135,0 38.007,20.707 38.007,51.037l0,120.768l75.024,0Zm-307.552,-334.556c-25.674,0 -42.448,16.879 -42.448,39.002c0,21.658 16.264,39.002 41.455,39.002l0.484,0c26.165,0 42.452,-17.344 42.452,-39.002c-0.485,-22.092 -16.241,-38.954 -41.943,-39.002Z" />
+        </svg>
+    </a>
+    <a target="_blank" rel="noopener noreferrer" aria-label="share Normalization on reddit"
+        href="https://reddit.com/submit?url=https%3a%2f%2fdavid-hoangt.github.io%2fposts%2f2026-06-09-normalization%2f&title=Normalization%3A%20From%20BatchNorm%20to%20RMSNorm%20to%20Nothing">
+        <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve">
+            <path
+                d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-386.892,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Zm-3.446,265.638c0,-22.964 -18.616,-41.58 -41.58,-41.58c-11.211,0 -21.361,4.457 -28.841,11.666c-28.424,-20.508 -67.586,-33.757 -111.204,-35.278l18.941,-89.121l61.884,13.157c0.756,15.734 13.642,28.29 29.56,28.29c16.407,0 29.706,-13.299 29.706,-29.701c0,-16.403 -13.299,-29.702 -29.706,-29.702c-11.666,0 -21.657,6.792 -26.515,16.578l-69.105,-14.69c-1.922,-0.418 -3.939,-0.042 -5.585,1.036c-1.658,1.073 -2.811,2.761 -3.224,4.686l-21.152,99.438c-44.258,1.228 -84.046,14.494 -112.837,35.232c-7.468,-7.164 -17.589,-11.591 -28.757,-11.591c-22.965,0 -41.585,18.616 -41.585,41.58c0,16.896 10.095,31.41 24.568,37.918c-0.639,4.135 -0.99,8.328 -0.99,12.576c0,63.977 74.469,115.836 166.33,115.836c91.861,0 166.334,-51.859 166.334,-115.836c0,-4.218 -0.347,-8.387 -0.977,-12.493c14.564,-6.47 24.735,-21.034 24.735,-38.001Zm-119.474,108.193c-20.27,20.241 -59.115,21.816 -70.534,21.816c-11.428,0 -50.277,-1.575 -70.522,-21.82c-3.007,-3.008 -3.007,-7.882 0,-10.889c3.003,-2.999 7.882,-3.003 10.885,0c12.777,12.781 40.11,17.317 59.637,17.317c19.522,0 46.86,-4.536 59.657,-17.321c3.016,-2.999 7.886,-2.995 10.885,0.008c3.008,3.011 3.003,7.882 -0.008,10.889Zm-5.23,-48.781c-16.373,0 -29.701,-13.324 -29.701,-29.698c0,-16.381 13.328,-29.714 29.701,-29.714c16.378,0 29.706,13.333 29.706,29.714c0,16.374 -13.328,29.698 -29.706,29.698Zm-160.386,-29.702c0,-16.381 13.328,-29.71 29.714,-29.71c16.369,0 29.689,13.329 29.689,29.71c0,16.373 -13.32,29.693 -29.689,29.693c-16.386,0 -29.714,-13.32 -29.714,-29.693Z" />
+        </svg>
+    </a>
+    <a target="_blank" rel="noopener noreferrer" aria-label="share Normalization on facebook"
+        href="https://facebook.com/sharer/sharer.php?u=https%3a%2f%2fdavid-hoangt.github.io%2fposts%2f2026-06-09-normalization%2f">
+        <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve">
+            <path
+                d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-106.468,0l0,-192.915l66.6,0l12.672,-82.621l-79.272,0l0,-53.617c0,-22.603 11.073,-44.636 46.58,-44.636l36.042,0l0,-70.34c0,0 -32.71,-5.582 -63.982,-5.582c-65.288,0 -107.96,39.569 -107.96,111.204l0,62.971l-72.573,0l0,82.621l72.573,0l0,192.915l-191.104,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Z" />
+        </svg>
+    </a>
+    <a target="_blank" rel="noopener noreferrer" aria-label="share Normalization on whatsapp"
+        href="https://api.whatsapp.com/send?text=Normalization%3A%20From%20BatchNorm%20to%20RMSNorm%20to%20Nothing%20-%20https%3a%2f%2fdavid-hoangt.github.io%2fposts%2f2026-06-09-normalization%2f">
+        <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve">
+            <path
+                d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-386.892,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Zm-58.673,127.703c-33.842,-33.881 -78.847,-52.548 -126.798,-52.568c-98.799,0 -179.21,80.405 -179.249,179.234c-0.013,31.593 8.241,62.428 23.927,89.612l-25.429,92.884l95.021,-24.925c26.181,14.28 55.659,21.807 85.658,21.816l0.074,0c98.789,0 179.206,-80.413 179.247,-179.243c0.018,-47.895 -18.61,-92.93 -52.451,-126.81Zm-126.797,275.782l-0.06,0c-26.734,-0.01 -52.954,-7.193 -75.828,-20.767l-5.441,-3.229l-56.386,14.792l15.05,-54.977l-3.542,-5.637c-14.913,-23.72 -22.791,-51.136 -22.779,-79.287c0.033,-82.142 66.867,-148.971 149.046,-148.971c39.793,0.014 77.199,15.531 105.329,43.692c28.128,28.16 43.609,65.592 43.594,105.4c-0.034,82.149 -66.866,148.983 -148.983,148.984Zm81.721,-111.581c-4.479,-2.242 -26.499,-13.075 -30.604,-14.571c-4.105,-1.495 -7.091,-2.241 -10.077,2.241c-2.986,4.483 -11.569,14.572 -14.182,17.562c-2.612,2.988 -5.225,3.364 -9.703,1.12c-4.479,-2.241 -18.91,-6.97 -36.017,-22.23c-13.314,-11.876 -22.304,-26.542 -24.916,-31.026c-2.612,-4.484 -0.279,-6.908 1.963,-9.14c2.016,-2.007 4.48,-5.232 6.719,-7.847c2.24,-2.615 2.986,-4.484 4.479,-7.472c1.493,-2.99 0.747,-5.604 -0.374,-7.846c-1.119,-2.241 -10.077,-24.288 -13.809,-33.256c-3.635,-8.733 -7.327,-7.55 -10.077,-7.688c-2.609,-0.13 -5.598,-0.158 -8.583,-0.158c-2.986,0 -7.839,1.121 -11.944,5.604c-4.105,4.484 -15.675,15.32 -15.675,37.364c0,22.046 16.048,43.342 18.287,46.332c2.24,2.99 31.582,48.227 76.511,67.627c10.685,4.615 19.028,7.371 25.533,9.434c10.728,3.41 20.492,2.929 28.209,1.775c8.605,-1.285 26.499,-10.833 30.231,-21.295c3.732,-10.464 3.732,-19.431 2.612,-21.298c-1.119,-1.869 -4.105,-2.99 -8.583,-5.232Z" />
+        </svg>
+    </a>
+    <a target="_blank" rel="noopener noreferrer" aria-label="share Normalization on telegram"
+        href="https://telegram.me/share/url?text=Normalization%3A%20From%20BatchNorm%20to%20RMSNorm%20to%20Nothing&amp;url=https%3a%2f%2fdavid-hoangt.github.io%2fposts%2f2026-06-09-normalization%2f">
+        <svg version="1.1" xml:space="preserve" viewBox="2 2 28 28">
+            <path
+                d="M26.49,29.86H5.5a3.37,3.37,0,0,1-2.47-1,3.35,3.35,0,0,1-1-2.47V5.48A3.36,3.36,0,0,1,3,3,3.37,3.37,0,0,1,5.5,2h21A3.38,3.38,0,0,1,29,3a3.36,3.36,0,0,1,1,2.46V26.37a3.35,3.35,0,0,1-1,2.47A3.38,3.38,0,0,1,26.49,29.86Zm-5.38-6.71a.79.79,0,0,0,.85-.66L24.73,9.24a.55.55,0,0,0-.18-.46.62.62,0,0,0-.41-.17q-.08,0-16.53,6.11a.59.59,0,0,0-.41.59.57.57,0,0,0,.43.52l4,1.24,1.61,4.83a.62.62,0,0,0,.63.43.56.56,0,0,0,.4-.17L16.54,20l4.09,3A.9.9,0,0,0,21.11,23.15ZM13.8,20.71l-1.21-4q8.72-5.55,8.78-5.55c.15,0,.23,0,.23.16a.18.18,0,0,1,0,.06s-2.51,2.3-7.52,6.8Z" />
+        </svg>
+    </a>
+</div>
+
+  </footer>
+</article>
+    </main>
+
+<footer class="footer">
+    <span>&copy; 2026 <a href="../../">David&#39;s Whiteboard</a></span>
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &amp;
+        <a href="https://git.io/hugopapermod" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    const isDark = document.body.classList.contains('dark');
+    mermaid.initialize({ startOnLoad: true, theme: isDark ? 'dark' : 'default', securityLevel: 'loose' });
+</script>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+<script>
+    document.querySelectorAll('pre > code').forEach((codeblock) => {
+        const container = codeblock.parentNode.parentNode;
+
+        const copybutton = document.createElement('button');
+        copybutton.classList.add('copy-code');
+        copybutton.innerText = 'copy';
+
+        function copyingDone() {
+            copybutton.innerText = 'copied!';
+            setTimeout(() => {
+                copybutton.innerText = 'copy';
+            }, 2000);
+        }
+
+        copybutton.addEventListener('click', (cb) => {
+            if ('clipboard' in navigator) {
+                navigator.clipboard.writeText(codeblock.textContent);
+                copyingDone();
+                return;
+            }
+
+            const range = document.createRange();
+            range.selectNodeContents(codeblock);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+            try {
+                document.execCommand('copy');
+                copyingDone();
+            } catch (e) { };
+            selection.removeRange(range);
+        });
+
+        if (container.classList.contains("highlight")) {
+            container.appendChild(copybutton);
+        } else if (container.parentNode.firstChild == container) {
+
+        } else if (codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.nodeName == "TABLE") {
+
+            codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.appendChild(copybutton);
+        } else {
+
+            codeblock.parentNode.appendChild(copybutton);
+        }
+    });
+</script>
+</body>
+
+</html>
