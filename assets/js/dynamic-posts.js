@@ -7,6 +7,18 @@
     description: "Document my learning notes."
   };
 
+  // Brief intro shown at the top of each tag page (?tag=<name>).
+  var TAG_INFO = {
+    "transformer": "The attention-based architecture behind modern language models. It processes a whole sequence in parallel, stacking self-attention and feed-forward blocks to mix information across tokens.",
+    "attention": "The mechanism that lets a model weigh every other token by learned relevance and pull in the most useful context. Self-attention and its variants are the core of the transformer.",
+    "neural-network": "A model built from layers of weighted connections and nonlinear activations that learns a function from data by adjusting its weights.",
+    "backpropagation": "The algorithm that trains neural networks: it propagates the loss gradient backward through the layers via the chain rule so each weight knows how to update.",
+    "normalization": "Techniques that rescale activations — BatchNorm, LayerNorm, RMSNorm — to keep their distribution stable, which speeds up and steadies training of deep networks.",
+    "layernorm": "Layer Normalization standardizes a token's activations across the feature dimension (zero mean, unit variance), making training stable independent of batch size.",
+    "rmsnorm": "Root Mean Square Normalization, a lighter LayerNorm variant that rescales activations by their RMS without subtracting the mean — cheaper and standard in recent LLMs.",
+    "positional-encoding": "Methods that inject token order into the otherwise position-agnostic transformer, from fixed sinusoids to learned and rotary (RoPE) schemes."
+  };
+
   function getRoot() {
     return window.SITE_ROOT || "./";
   }
@@ -137,7 +149,10 @@
       });
       var header = document.createElement("header");
       header.className = "page-header";
-      header.innerHTML = '<h1>Tag: ' + escapeHtml(tagParam) + "</h1>" +
+      var intro = TAG_INFO[tagParam]
+        ? '<p class="tag-intro">' + escapeHtml(TAG_INFO[tagParam]) + "</p>"
+        : "";
+      header.innerHTML = '<h1>Tag: ' + escapeHtml(tagParam) + "</h1>" + intro +
         '<p><a href="' + getRoot() + 'tags/">&larr; All tags</a></p>';
       container.appendChild(header);
 
@@ -163,7 +178,9 @@
 
     var ul = document.createElement("ul");
     ul.className = "terms-tags";
-    var sortedTags = Object.keys(tagCounts).sort();
+    var sortedTags = Object.keys(tagCounts).sort(function (a, b) {
+      return tagCounts[b] - tagCounts[a] || a.localeCompare(b);
+    });
     sortedTags.forEach(function (tag) {
       var li = document.createElement("li");
       li.innerHTML = '<a href="' + tagUrl(tag) + '">' + escapeHtml(tag) +

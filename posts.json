@@ -4,7 +4,12 @@
     "title": "Normalization: From BatchNorm to RMSNorm to Nothing",
     "date": "2026-06-09",
     "summary": "How transformers tame their activations, and why every generation stripped more out. Building BatchNorm, LayerNorm, RMSNorm, Pre/Post/Peri-Norm placement, QK-Norm, and the normalization-free DyT from scratch in PyTorch — which axis, which statistic, and what to drop.",
-    "tags": ["transformer", "normalization", "layernorm", "rmsnorm", "deep-learning", "long-read"],
+    "tags": [
+      "transformer",
+      "normalization",
+      "layernorm",
+      "rmsnorm"
+    ],
     "readingTime": "26 min",
     "author": "David Hoang"
   },
@@ -13,7 +18,11 @@
     "title": "Positional Encoding: How Transformers Learn Where Tokens Sit",
     "date": "2026-05-06",
     "summary": "From sinusoids to RoPE to NoPE — how transformers know where each token sits. Building Absolute PE, Sinusoidal, Learned, Relative PE, ALiBi, RoPE, p-RoPE, and NoPE from scratch in PyTorch. Six explicit position schemes plus the no-PE hybrid that ships in SmolLM3 and Gemma 4.",
-    "tags": ["transformer", "attention", "positional-encoding", "deep-learning", "long-read"],
+    "tags": [
+      "transformer",
+      "attention",
+      "positional-encoding"
+    ],
     "readingTime": "30 min",
     "author": "David Hoang"
   },
@@ -22,7 +31,10 @@
     "title": "Attention Variants: From Self-Attention to GQA, MLA, SWA, and Beyond",
     "date": "2026-04-09",
     "summary": "Building every major attention mechanism from scratch in PyTorch — GQA, MLA, SWA, NSA, Gated Attention, and Hybrid Attention. Six efficiency variants that solve the bottlenecks of standard attention: KV cache memory, quadratic cost, and training instability at scale.",
-    "tags": ["transformer", "attention", "deep-learning", "long-read"],
+    "tags": [
+      "transformer",
+      "attention"
+    ],
     "readingTime": "45 min",
     "author": "David Hoang"
   },
@@ -31,7 +43,10 @@
     "title": "Self-Attention and Multi-Head Attention",
     "date": "2026-03-30",
     "summary": "The single equation that changed NLP shipped in 2017 inside Attention Is All You Need (Vaswani et al.). By the end of this post you will have built, from scratch in PyTorch, working implementations of Self-Attention, Multi-Head Attention, Causal Self-Attention, and Cross-Attention — the four building blocks that power every transformer.",
-    "tags": ["transformer", "attention", "deep-learning", "long-read"],
+    "tags": [
+      "transformer",
+      "attention"
+    ],
     "readingTime": "20 min",
     "author": "David Hoang"
   },
@@ -40,7 +55,10 @@
     "title": "Neural Network From Scratch: From One Neuron to a Tiny MLP in NumPy",
     "date": "2026-03-23",
     "summary": "Start with one neuron, expand it into Dense layers, then train a small MLP on a curved spiral dataset. Building the forward pass, ReLU, softmax cross-entropy, backpropagation, SGD, and regularization from scratch in pure NumPy — no PyTorch, no autograd.",
-    "tags": ["neural-network", "numpy", "backpropagation", "deep-learning", "from-scratch", "long-read"],
+    "tags": [
+      "neural-network",
+      "backpropagation"
+    ],
     "readingTime": "22 min",
     "author": "David Hoang"
   }
