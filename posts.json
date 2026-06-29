@@ -1,5 +1,19 @@
 [
   {
+    "slug": "2026-06-29-activations",
+    "title": "Activations: From ReLU to SwiGLU and the Rise of Gated FFNs",
+    "date": "2026-06-29",
+    "summary": "From sigmoid and tanh to ReLU, GELU, SiLU, and the gated SwiGLU FFN. Building each transformer activation from scratch in PyTorch — why each curve replaced the last, the GLU family, the 8/3 parameter rule, and ReLU²'s quiet revival.",
+    "tags": [
+      "transformer",
+      "activations",
+      "swiglu",
+      "gelu"
+    ],
+    "readingTime": "16 min",
+    "author": "David Hoang"
+  },
+  {
     "slug": "2026-06-09-normalization",
     "title": "Normalization: From BatchNorm to RMSNorm to Nothing",
     "date": "2026-06-09",
