@@ -1,5 +1,19 @@
 [
   {
+    "slug": "2026-07-05-tokenizer",
+    "title": "Tokenizers: From Characters to Byte-Level BPE",
+    "date": "2026-07-05",
+    "summary": "How raw text becomes the integer IDs a transformer reads. Building character, word, BPE, byte-level BPE, WordPiece, and Unigram/SentencePiece tokenizers from scratch — and the vocabulary-size versus sequence-length tradeoff that drives every choice.",
+    "tags": [
+      "tokenizer",
+      "bpe",
+      "subword",
+      "tokenization"
+    ],
+    "readingTime": "11 min",
+    "author": "David Hoang"
+  },
+  {
     "slug": "2026-06-29-activations",
     "title": "Activations: From ReLU to SwiGLU and the Rise of Gated FFNs",
     "date": "2026-06-29",
