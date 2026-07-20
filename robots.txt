@@ -1,3 +1,3 @@
 User-agent: *
 Disallow:
-Sitemap: https://david-hoangt.github.io/sitemap.xml
+Sitemap: https://davidwhiteboard.github.io/sitemap.xml

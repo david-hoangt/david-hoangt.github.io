@@ -2,55 +2,55 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
-    <loc>https://david-hoangt.github.io/tags/</loc>
+    <loc>https://davidwhiteboard.github.io/tags/</loc>
     <lastmod>2026-07-05T00:00:00+00:00</lastmod>
   </url>
   <url>
-    <loc>https://david-hoangt.github.io/search/</loc>
+    <loc>https://davidwhiteboard.github.io/search/</loc>
     <lastmod>2026-07-05T00:00:00+00:00</lastmod>
   </url>
   <url>
-    <loc>https://david-hoangt.github.io/posts/2026-07-05-tokenizer/</loc>
+    <loc>https://davidwhiteboard.github.io/posts/2026-07-05-tokenizer/</loc>
     <lastmod>2026-07-05T00:00:00+00:00</lastmod>
   </url>
   <url>
-    <loc>https://david-hoangt.github.io/posts/</loc>
+    <loc>https://davidwhiteboard.github.io/posts/</loc>
     <lastmod>2026-07-05T00:00:00+00:00</lastmod>
   </url>
   <url>
-    <loc>https://david-hoangt.github.io/categories/</loc>
+    <loc>https://davidwhiteboard.github.io/categories/</loc>
     <lastmod>2026-07-05T00:00:00+00:00</lastmod>
   </url>
   <url>
-    <loc>https://david-hoangt.github.io/archives/</loc>
+    <loc>https://davidwhiteboard.github.io/archives/</loc>
     <lastmod>2026-07-05T00:00:00+00:00</lastmod>
   </url>
   <url>
-    <loc>https://david-hoangt.github.io/</loc>
+    <loc>https://davidwhiteboard.github.io/</loc>
     <lastmod>2026-07-05T00:00:00+00:00</lastmod>
   </url>
   <url>
-    <loc>https://david-hoangt.github.io/posts/2026-06-29-activations/</loc>
+    <loc>https://davidwhiteboard.github.io/posts/2026-06-29-activations/</loc>
     <lastmod>2026-06-29T00:00:00+00:00</lastmod>
   </url>
   <url>
-    <loc>https://david-hoangt.github.io/posts/2026-06-09-normalization/</loc>
+    <loc>https://davidwhiteboard.github.io/posts/2026-06-09-normalization/</loc>
     <lastmod>2026-06-09T00:00:00+00:00</lastmod>
   </url>
   <url>
-    <loc>https://david-hoangt.github.io/posts/2026-05-06-positional-encoding/</loc>
+    <loc>https://davidwhiteboard.github.io/posts/2026-05-06-positional-encoding/</loc>
     <lastmod>2026-05-06T00:00:00+00:00</lastmod>
   </url>
   <url>
-    <loc>https://david-hoangt.github.io/posts/2026-04-09-attn-variant/</loc>
+    <loc>https://davidwhiteboard.github.io/posts/2026-04-09-attn-variant/</loc>
     <lastmod>2026-04-09T00:00:00+00:00</lastmod>
   </url>
   <url>
-    <loc>https://david-hoangt.github.io/posts/2026-03-30-self-attn/</loc>
+    <loc>https://davidwhiteboard.github.io/posts/2026-03-30-self-attn/</loc>
     <lastmod>2026-03-30T00:00:00+00:00</lastmod>
   </url>
   <url>
-    <loc>https://david-hoangt.github.io/posts/2026-03-23-neural-net/</loc>
+    <loc>https://davidwhiteboard.github.io/posts/2026-03-23-neural-net/</loc>
     <lastmod>2026-03-23T00:00:00+00:00</lastmod>
   </url>
 </urlset>
