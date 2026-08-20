@@ -24,6 +24,14 @@
         list.querySelectorAll('a').forEach(function (a) { a.removeAttribute('aria-label'); });
         panel.appendChild(list);
 
+        // The panel holds clones of the source TOC anchors. Index them by href so the
+        // scroll handler highlights the anchor the reader can actually see, rather than
+        // the original (hidden) one it was cloned from.
+        var panelLinks = {};
+        list.querySelectorAll('a[href^="#"]').forEach(function (a) {
+            panelLinks[a.getAttribute('href')] = a;
+        });
+
         sidebar.appendChild(panel);
         document.body.appendChild(sidebar);
 
@@ -62,7 +70,7 @@
             item.title = e.anchor.textContent;
             item.setAttribute('aria-label', e.anchor.textContent);
             mini.appendChild(item);
-            entries.push({ mini: item, link: e.anchor, el: el });
+            entries.push({ mini: item, link: panelLinks[hash] || e.anchor, el: el });
         });
 
         panel.querySelectorAll('a[href^="#"]').forEach(function (a) {
@@ -78,6 +86,13 @@
 
         document.addEventListener('keydown', function (ev) {
             if (ev.key === 'Escape') sidebar.classList.remove('open');
+        });
+
+        // Clicking anywhere outside the sidebar dismisses the panel.
+        document.addEventListener('click', function (ev) {
+            if (!sidebar.classList.contains('open')) return;
+            if (sidebar.contains(ev.target)) return;
+            sidebar.classList.remove('open');
         });
 
         if (!entries.length) return;

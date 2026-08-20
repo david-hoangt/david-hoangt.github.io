@@ -1,5 +1,19 @@
 [
   {
+    "slug": "2026-08-20-architecture",
+    "title": "Architecture: Assembling a Modern Dense LLM",
+    "date": "2026-08-20",
+    "summary": "Every component of the series wired into one decoder-only model: the residual stream, the block, the embedding and tied LM head, where the 596M parameters sit, and loading real Qwen3-0.6B weights to prove the implementation matches the reference.",
+    "tags": [
+      "architecture",
+      "transformer",
+      "qwen3",
+      "llm"
+    ],
+    "readingTime": "14 min",
+    "author": "David Hoang"
+  },
+  {
     "slug": "2026-07-05-tokenizer",
     "title": "Tokenizers: From Characters to Byte-Level BPE",
     "date": "2026-07-05",

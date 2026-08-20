@@ -2,3 +2,6 @@
 .dropbox
 .DS_Store
 Icon*
+# crosspost tool: secrets + generated output
+tools/crosspost/config.json
+tools/crosspost/dist/
