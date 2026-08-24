@@ -1,60 +1,67 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
-    <title>Posts on David&#39;s Whiteboard</title>
-    <link>https://davidwhiteboard.github.io/posts/</link>
-    <description>Recent content in Posts on David&#39;s Whiteboard</description>
+    <title>Posts on Backpropolis</title>
+    <link>https://backpropolis.github.io/posts/</link>
+    <description>Recent content in Posts on Backpropolis</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Sun, 05 Jul 2026 00:00:00 +0000</lastBuildDate>
-    <atom:link href="https://davidwhiteboard.github.io/posts/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Thu, 20 Aug 2026 00:00:00 +0000</lastBuildDate>
+    <atom:link href="https://backpropolis.github.io/posts/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Architecture: Assembling a Modern Dense LLM</title>
+      <link>https://backpropolis.github.io/posts/2026-08-20-architecture/</link>
+      <pubDate>Thu, 20 Aug 2026 00:00:00 +0000</pubDate>
+      <guid>https://backpropolis.github.io/posts/2026-08-20-architecture/</guid>
+      <description>Every component of the series wired into one decoder-only model: the residual stream, the block, the embedding and tied LM head, where the 596M parameters sit, and loading real Qwen3-0.6B weights to prove the implementation matches the reference.</description>
+    </item>
     <item>
       <title>Tokenizers: From Characters to Byte-Level BPE</title>
-      <link>https://davidwhiteboard.github.io/posts/2026-07-05-tokenizer/</link>
+      <link>https://backpropolis.github.io/posts/2026-07-05-tokenizer/</link>
       <pubDate>Sun, 05 Jul 2026 00:00:00 +0000</pubDate>
-      <guid>https://davidwhiteboard.github.io/posts/2026-07-05-tokenizer/</guid>
+      <guid>https://backpropolis.github.io/posts/2026-07-05-tokenizer/</guid>
       <description>How raw text becomes the integer IDs a transformer reads. Building character, word, BPE, byte-level BPE, WordPiece, and Unigram/SentencePiece tokenizers from scratch — and the vocabulary-size versus sequence-length tradeoff that drives every choice.</description>
     </item>
     <item>
       <title>Activations: From ReLU to SwiGLU and the Rise of Gated FFNs</title>
-      <link>https://davidwhiteboard.github.io/posts/2026-06-29-activations/</link>
+      <link>https://backpropolis.github.io/posts/2026-06-29-activations/</link>
       <pubDate>Mon, 29 Jun 2026 00:00:00 +0000</pubDate>
-      <guid>https://davidwhiteboard.github.io/posts/2026-06-29-activations/</guid>
+      <guid>https://backpropolis.github.io/posts/2026-06-29-activations/</guid>
       <description>From sigmoid and tanh to ReLU, GELU, SiLU, and the gated SwiGLU FFN. Building each transformer activation from scratch in PyTorch — why each curve replaced the last, the GLU family, the 8/3 parameter rule, and ReLU²'s quiet revival.</description>
     </item>
     <item>
       <title>Normalization: From BatchNorm to RMSNorm to Nothing</title>
-      <link>https://davidwhiteboard.github.io/posts/2026-06-09-normalization/</link>
+      <link>https://backpropolis.github.io/posts/2026-06-09-normalization/</link>
       <pubDate>Tue, 09 Jun 2026 00:00:00 +0000</pubDate>
-      <guid>https://davidwhiteboard.github.io/posts/2026-06-09-normalization/</guid>
+      <guid>https://backpropolis.github.io/posts/2026-06-09-normalization/</guid>
       <description>How transformers tame their activations, and why every generation stripped more out. Building BatchNorm, LayerNorm, RMSNorm, Pre/Post/Peri-Norm placement, QK-Norm, and the normalization-free DyT from scratch in PyTorch — which axis, which statistic, and what to drop.</description>
     </item>
     <item>
       <title>Positional Encoding: How Transformers Learn Where Tokens Sit</title>
-      <link>https://davidwhiteboard.github.io/posts/2026-05-06-positional-encoding/</link>
+      <link>https://backpropolis.github.io/posts/2026-05-06-positional-encoding/</link>
       <pubDate>Wed, 06 May 2026 00:00:00 +0000</pubDate>
-      <guid>https://davidwhiteboard.github.io/posts/2026-05-06-positional-encoding/</guid>
+      <guid>https://backpropolis.github.io/posts/2026-05-06-positional-encoding/</guid>
       <description>From sinusoids to RoPE to NoPE — how transformers know where each token sits. Building Absolute PE, Sinusoidal, Learned, Relative PE, ALiBi, RoPE, p-RoPE, and NoPE from scratch in PyTorch. Six explicit position schemes plus the no-PE hybrid that ships in SmolLM3 and Gemma 4.</description>
     </item>
     <item>
       <title>Attention Variants: From Self-Attention to GQA, MLA, SWA, and Beyond</title>
-      <link>https://davidwhiteboard.github.io/posts/2026-04-09-attn-variant/</link>
+      <link>https://backpropolis.github.io/posts/2026-04-09-attn-variant/</link>
       <pubDate>Thu, 09 Apr 2026 00:00:00 +0000</pubDate>
-      <guid>https://davidwhiteboard.github.io/posts/2026-04-09-attn-variant/</guid>
+      <guid>https://backpropolis.github.io/posts/2026-04-09-attn-variant/</guid>
       <description>Building every major attention mechanism from scratch in PyTorch — GQA, MLA, SWA, NSA, Gated Attention, and Hybrid Attention. Six efficiency variants that solve the bottlenecks of standard attention: KV cache memory, quadratic cost, and training instability at scale.</description>
     </item>
     <item>
       <title>Self-Attention and Multi-Head Attention</title>
-      <link>https://davidwhiteboard.github.io/posts/2026-03-30-self-attn/</link>
+      <link>https://backpropolis.github.io/posts/2026-03-30-self-attn/</link>
       <pubDate>Mon, 30 Mar 2026 00:00:00 +0000</pubDate>
-      <guid>https://davidwhiteboard.github.io/posts/2026-03-30-self-attn/</guid>
+      <guid>https://backpropolis.github.io/posts/2026-03-30-self-attn/</guid>
       <description>The single equation that changed NLP shipped in 2017 inside Attention Is All You Need (Vaswani et al.). By the end of this post you will have built, from scratch in PyTorch, working implementations of Self-Attention, Multi-Head Attention, Causal Self-Attention, and Cross-Attention — the four building blocks that power every transformer.</description>
     </item>
     <item>
       <title>Neural Network From Scratch: From One Neuron to a Tiny MLP in NumPy</title>
-      <link>https://davidwhiteboard.github.io/posts/2026-03-23-neural-net/</link>
+      <link>https://backpropolis.github.io/posts/2026-03-23-neural-net/</link>
       <pubDate>Mon, 23 Mar 2026 00:00:00 +0000</pubDate>
-      <guid>https://davidwhiteboard.github.io/posts/2026-03-23-neural-net/</guid>
+      <guid>https://backpropolis.github.io/posts/2026-03-23-neural-net/</guid>
       <description>Start with one neuron, expand it into Dense layers, then train a small MLP on a curved spiral dataset. Building the forward pass, ReLU, softmax cross-entropy, backpropagation, SGD, and regularization from scratch in pure NumPy — no PyTorch, no autograd.</description>
     </item>
   </channel>
